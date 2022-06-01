@@ -3,10 +3,8 @@
 using namespace std;
 
 int sq2idx(char file, char rank) {
-  if (file >= 'a' && file <= 'h' && rank >= '1' && rank <= '8')
-    return (file - 'a') + (7 - (rank - '1')) * 8;  // matrix magic
-  else
-    throw invalid_argument("invalid square " + file + rank);
+  assert(file >= 'a' && file <= 'h' && rank >= '1' && rank <= '8');
+  return (file - 'a') + (7 - (rank - '1')) * 8;  // matrix magic
 }
 
 class Move {
@@ -38,6 +36,9 @@ class Move {
 class Board {
  public:
   string board;
+  char castling_rights[4];
+  int turn, enpassant_sq_idx, fifty, moves;
+
   Board() { load_startpos(); }
 
   int sq_color(int sq_idx) { return isupper(board[sq_idx]) ? 1 : -1; }
@@ -77,28 +78,64 @@ class Board {
   }
 
   void load_fen(string fen) {
-    int p = 0;
+    int part = 0, p = 0;
+    char enpassant_sq[2];
+
+    board =
+        "........"
+        "........"
+        "........"
+        "........"
+        "........"
+        "........"
+        "........"
+        "........";
+    enpassant_sq_idx = fifty = moves = 0;
+
     for (auto& x : fen) {
-      if (p < 64) {
-        if (isdigit(x)) {
-          int dots = x - '0';
-          while (dots--) board[p++] = '.';
-        } else if (x != '/')
+      if (x == ' ') part++, p = 0;
+      if (part == 0) {
+        if (isdigit(x))
+          for (int dots = x - '0'; dots--;) board[p++] = '.';
+        else if (x != '/')
           board[p++] = x;
+      } else if (part == 1)
+        turn = x == 'w' ? 1 : -1;
+      else if (part == 2)
+        if (x == '-')
+          castling_rights[0] = castling_rights[1] = castling_rights[2] =
+              castling_rights[3] = '-';
+        else
+          castling_rights[p++] = x;
+      else if (part == 3)
+        if (x == '-')
+          enpassant_sq_idx = -1;
+        else
+          enpassant_sq[p++] = x;
+      else if (part == 4) {
+        fifty *= 10;
+        fifty += x - '0';
+      } else if (part == 5) {
+        moves *= 10;
+        moves += x - '0';
       }
     }
+
+    if (~enpassant_sq_idx)
+      enpassant_sq_idx = sq2idx(enpassant_sq[0], enpassant_sq[1]);
   }
 
   void load_startpos() {
-    board =
-        "rnbqkbnr"
-        "pppppppp"
-        "........"
-        "........"
-        "........"
-        "........"
-        "PPPPPPPP"
-        "RNBQKBNR";
+    // board =
+    //     "rnbqkbnr"
+    //     "pppppppp"
+    //     "........"
+    //     "........"
+    //     "........"
+    //     "........"
+    //     "PPPPPPPP"
+    //     "RNBQKBNR";
+    load_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
   }
 };
 
@@ -106,7 +143,7 @@ class Game {
  public:
   Board board;
   vector<Move> movelist;
-  int ply = 0, end = 0, turn = 1, fifty = 0;
+  int ply = 0, end = 0;
 
   void make_move(string m) {
     if (ply != end) {
@@ -123,19 +160,19 @@ class Game {
 
     move.print();
 
-    ply++, end++, turn *= -1;
+    ply++, end++, board.turn *= -1;
   }
 
   void prev() {
     if (ply > 0) {
-      board.unmake_move(movelist[--ply], turn);
-      turn *= -1;
+      board.unmake_move(movelist[--ply], board.turn);
+      board.turn *= -1;
     }
   }
   void next() {
     if (ply < end) {
       board.make_move(movelist[ply++]);
-      turn *= -1;
+      board.turn *= -1;
     }
     cout << ply;
   }
@@ -150,6 +187,8 @@ class Game {
 
   // }
 };
+
+void generate_moves(Board b) {}
 
 void test_fen() {
   string fen =
