@@ -43,3 +43,19 @@
 ### after 12 am
 - started writing this blog lol
 
+### 
+- started writing move generation function
+
+## 16 Jun 2022
+### after a long break 
+(made a snake clone in c++ during this time, check it out!)
+- still coding move generation
+- moved hard-coded numbers to Enums (`Direction` and `Player`)
+- refactored sliding moves (Q, B, R)
+- added `pgn` output (ugly but atleast lichess can parse)
+- now engine generates moves from both sides, yay!
+- separated `main.cpp` into several header and cpp files
+
+## 17 Jun 2022
+### after 2 am
+- added `fen` output, generates direct url to lichess analysis!
