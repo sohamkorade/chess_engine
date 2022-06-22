@@ -10,13 +10,18 @@ void test_fen() {
 
 void test_navigation() {
   Game g;
+  // g.board.load_fen("8/8/3k4/8/8/3KP1r1/8/8 w - - 0 1");
   g.board.print();
 
   string cmd;
   while (cin >> cmd) {
     if (cmd == "list" || cmd == "l")
       g.print_movelist();
-    else if (cmd == "rand" || cmd == "r") {
+    else if (cmd == "divide") {
+      int depth;
+      cin >> depth;
+      g.board.divide(depth);
+    } else if (cmd == "rand" || cmd == "r") {
       g.random_move();
     } else if (cmd == "random") {
       int times;
@@ -30,11 +35,35 @@ void test_navigation() {
       g.seek(0);
     else if (cmd == "end" || cmd == "e")
       g.seek(g.end);
-    else if (cmd == "pseudo")
-      generate_moves(g.board);
-    else if (cmd == "move" || cmd == "m") {
+    else if (cmd == "seek") {
+      int pos;
+      cin >> pos;
+      g.seek(pos);
+    } else if (cmd == "pseudo") {
+      Game temp = g;
+      temp.movelist = g.board.generate_pseudo_moves();
+      temp.print_movelist();
+    } else if (cmd == "turn") {
+      g.board.change_turn();
+    } else if (cmd == "legal") {
+      Game temp = g;
+      temp.movelist = g.board.generate_legal_moves();
+      temp.print_movelist();
+    } else if (cmd == "threats") {
+      g.board.mark_threats().print();
+    } else if (cmd == "move" || cmd == "m") {
       cin >> cmd;
-      g.make_move(cmd);
+      bool valid = false;
+      vector<Move> pseudo = g.board.generate_pseudo_moves();
+      for (auto &move : pseudo) {
+        if (g.board.to_san(move) == cmd || g.board.to_uci(move) == cmd) {
+          cout << "Valid move" << endl;
+          g.make_move(move);
+          valid = true;
+          break;
+        }
+      }
+      if (!valid) cout << "Invalid move" << endl;
     } else if (cmd == "fen") {
       getline(cin, cmd);
       g.board.load_fen(cmd.substr(1));
@@ -51,7 +80,8 @@ void test_navigation() {
       break;
 
     g.board.print();
-    cout << "ply " << g.ply << " end " << g.end << endl;
+    cout << "ply " << g.ply << " end " << g.end << " fen " << g.board.to_fen()
+         << endl;
   }
 }
 

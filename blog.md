@@ -59,3 +59,28 @@
 ## 17 Jun 2022
 ### after 2 am
 - added `fen` output, generates direct url to lichess analysis!
+
+### afternoon
+- repaired enpassant and castling moves
+- refactored move generation function
+- minor `san` notation improvements
+- started legal move generation function
+
+## 22 Jun 2022
+### after 2 am
+- almost completed legal move generation function
+- __issue__: sometimes switches black and white during random play
+- __issue__: handling castling rights and enpassant squares while undoing a move
+
+## 23 Jun 2022
+### after 12 am
+- __bugfix__: `san` notation doesn't show promotion
+- added `perft` and `divide` function
+- now we can find corner cases easily!
+## 2 am
+- wasted 1 hour on why I'm getting 1 move less than expected
+	reason: code generates kingside `else` queenside castling moves 🥲
+## 3 am
+- __bugfix__: now engine checks threatened squares during castling
+- improved `perft` function
+- still a lot of things to do (getting wrong `perft` results)
