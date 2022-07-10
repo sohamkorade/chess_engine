@@ -84,3 +84,22 @@
 - __bugfix__: now engine checks threatened squares during castling
 - improved `perft` function
 - still a lot of things to do (getting wrong `perft` results)
+
+## 27 Jun 2022
+### 3 pm
+- found one corner case: castling is still allowed after rook capture!
+
+## 9 Jul 2022
+### afternoon
+- fixed a corner case with promotion (earlier it always promoted to white pieces)
+
+## 10 Jul 2022
+### after 12 am
+- fixed a few corner cases with castling (pawns don't threaten blank squares)
+- move count fixed
+- planning to automate perft
+- graphics???
+
+### afternoon
+- another castling bug (capturing rook with king cleared only king's castling rights)
+	reason: `else`

@@ -7,7 +7,7 @@ class Move {
   char promotion = '.', captured = '.';
   bool enpassant = false, castling = false;
   bool castling_rights[4] = {};
-  int enpassant_sq_idx = -1, fifty = 0;
+  int enpassant_sq_idx = -1, fifty = 0, moves = 0;
   Move(string move = "a1a1");
   Move(int _from, int _to, char _promotion = '.', char _captured = '.',
        bool _enpassant = false, bool _castling = false);
@@ -39,7 +39,7 @@ class Board {
   Board mark_threats();
   Move match_san(vector<Move> movelist, string san);
   vector<string> list_san(vector<Move> movelist);
-  void divide(int depth);
+  int divide(int depth);
   int perft(int depth, int K_pos);
 
  protected:

@@ -91,9 +91,10 @@ void Board::make_move(Move& move) {
   copy(castling_rights, castling_rights + 4, move.castling_rights);
   move.enpassant_sq_idx = enpassant_sq_idx;
   move.fifty = fifty;
+  move.moves = moves;
 
   // update half-move clock
-  if (move.captured != '.' || board[move.from] == 'P' ||
+  if (board[move.to] != '.' || board[move.from] == 'P' ||
       board[move.from] == 'p')
     fifty = 0;
   else
@@ -103,16 +104,17 @@ void Board::make_move(Move& move) {
   if (board[move.from] == 'K')
     castling_rights[0] = castling_rights[1] = false;
   else if (board[move.from] == 'k')
-    castling_rights[1] = castling_rights[2] = false;
-  else if (board[move.from] == 'R') {
-    if (move.from == 63)
+    castling_rights[2] = castling_rights[3] = false;
+  if (board[move.from] == 'R' || board[move.to] == 'R') {
+    if (move.from == 63 || move.to == 63)
       castling_rights[0] = false;
-    else if (move.from == 56)
+    else if (move.from == 56 || move.to == 56)
       castling_rights[1] = false;
-  } else if (board[move.from] == 'r') {
-    if (move.from == 7)
+  }
+  if (board[move.from] == 'r' || board[move.to] == 'r') {
+    if (move.from == 7 || move.to == 7)
       castling_rights[2] = false;
-    else if (move.from == 0)
+    else if (move.from == 0 || move.to == 0)
       castling_rights[3] = false;
   }
 
@@ -143,7 +145,6 @@ void Board::make_move(Move& move) {
     int rel_S = (turn == White ? S : N);
     board[move.to + rel_S] = '.';
   }
-  if (turn == Black) moves++;
   change_turn();
 }
 void Board::unmake_move(Move& move) {
@@ -151,11 +152,12 @@ void Board::unmake_move(Move& move) {
   copy(move.castling_rights, move.castling_rights + 4, castling_rights);
   enpassant_sq_idx = move.enpassant_sq_idx;
   fifty = move.fifty;
+  moves = move.moves;
 
   // update board
   char captured = board[move.from];
   board[move.from] =
-      move.promotion == '.' ? board[move.to] : (turn == White ? 'P' : 'p');
+      move.promotion == '.' ? board[move.to] : (turn == Black ? 'P' : 'p');
   board[move.to] = move.captured;
   move.captured = captured;
 
@@ -170,16 +172,14 @@ void Board::unmake_move(Move& move) {
       board[56] = 'R', board[59] = '.';
   } else if (move.enpassant) {  // add pawn when enpassant
     int rel_N = (turn == White ? N : S);
-    board[move.to + rel_N] = (turn == White ? 'P' : 'p');
+    board[move.to + rel_N] = (turn == White ? 'P' : 'p');  // TODO:verify
   }
-  if (turn == Black) moves--;
   change_turn();
 }
 
 void Board::load_fen(string fen) {
   int part = 0, p = 0;
   char enpassant_sq[2];
-
   board =
       "........"
       "........"
@@ -189,7 +189,7 @@ void Board::load_fen(string fen) {
       "........"
       "........"
       "........";
-  enpassant_sq_idx = fifty = moves = 0;
+  enpassant_sq_idx = -1, fifty = 0, moves = 1;
   fill(castling_rights, castling_rights + 4, 0);
 
   for (auto& x : fen) {
@@ -371,8 +371,12 @@ vector<Move> Board::generate_pseudo_moves() {
   vector<Move> pseudo;
   for (int s = 0; s < 64; s++) {
     char piece = board[s];
-    if (hostile(piece, turn == Black ? 'k' : 'K')) continue;
+    if (hostile(piece, turn == Black ? 'k' : 'K'))
+      continue;  // not current player's pieces
     char rel_piece = toupper(piece);
+    vector<char> promotions = {'Q', 'R', 'B', 'N'};
+    if (turn == Black) promotions = {'q', 'r', 'b', 'n'};
+
     int file = s % 8, rank = s / 8;
 
     if (rel_piece == 'K') {
@@ -390,7 +394,7 @@ vector<Move> Board::generate_pseudo_moves() {
         if (castling_rights[0] && empty(61) && empty(62))
           pseudo.push_back(Move(s, s + E + E, '.', '.', false, true));
         // queenside
-        if (castling_rights[1] && empty(58) && empty(59))
+        if (castling_rights[1] && empty(57) & empty(58) && empty(59))
           pseudo.push_back(Move(s, s + W + W, '.', '.', false, true));
       }
       if (s == 4 && turn == Black) {
@@ -398,7 +402,7 @@ vector<Move> Board::generate_pseudo_moves() {
         if (castling_rights[2] && empty(5) && empty(6))
           pseudo.push_back(Move(s, s + E + E, '.', '.', false, true));
         // queenside
-        if (castling_rights[3] && empty(2) && empty(3))
+        if (castling_rights[3] && empty(1) && empty(2) && empty(3))
           pseudo.push_back(Move(s, s + W + W, '.', '.', false, true));
       }
     }
@@ -412,7 +416,7 @@ vector<Move> Board::generate_pseudo_moves() {
 
       if (empty(s + rel_N)) {
         if (rel_rank == 1) {  // promotion
-          for (auto& piece : {'Q', 'R', 'B', 'N'})
+          for (auto& piece : promotions)
             pseudo.push_back(Move(s, s + rel_N, piece));
         } else
           pseudo.push_back(Move(s, s + rel_N));  // push
@@ -421,14 +425,14 @@ vector<Move> Board::generate_pseudo_moves() {
       }
       if (isnt_A(s) && hostile(piece, board[s + rel_NW])) {  // capture NW
         if (rel_rank == 1) {  // promotion capture
-          for (auto& piece : {'Q', 'R', 'B', 'N'})
+          for (auto& piece : promotions)
             pseudo.push_back(Move(s, s + rel_NW, piece));
         } else
           pseudo.push_back(Move(s, s + rel_NW));
       }
       if (isnt_H(s) && hostile(piece, board[s + rel_NE])) {  // capture NE
         if (rel_rank == 1) {  // promotion capture
-          for (auto& piece : {'Q', 'R', 'B', 'N'})
+          for (auto& piece : promotions)
             pseudo.push_back(Move(s, s + rel_NE, piece));
         } else
           pseudo.push_back(Move(s, s + rel_NE));
@@ -491,26 +495,41 @@ vector<Move> Board::generate_legal_moves() {
 
     // check if any squares during castling are threatened
     if (move.castling) {
-      temp.change_turn();
-      auto pseudo = temp.generate_pseudo_moves();
-      unordered_set<int> threats;
-      for (auto& x : pseudo) threats.insert(x.to);
-      if (  // white kingside castling
-          move.from == 60 && move.to == 62 &&
-              (threats.count(60) || threats.count(61) || threats.count(62)) ||
-          // black queenside castling
-          move.from == 4 && move.to == 6 &&
-              (threats.count(4) || threats.count(5) || threats.count(6)) ||
-          // white kingside castling
-          move.from == 60 && move.to == 58 &&
-              (threats.count(60) || threats.count(59) || threats.count(58)) ||
-          // black queenside castling
-          move.from == 4 && move.to == 2 &&
-              (threats.count(4) || threats.count(3) || threats.count(2)))
-        it = movelist.erase(it);
-      else
-        ++it;
-      temp.change_turn();
+      // temp.change_turn();
+      // unordered_set<int> threats;
+      // for (auto& x : temp.generate_pseudo_moves()) threats.insert(x.to);
+      // if (  // white kingside castling
+      //     move.from == 60 && move.to == 62 &&
+      //         (threats.count(60) || threats.count(61) || threats.count(62))
+      //         ||
+      //     // black queenside castling
+      //     move.from == 4 && move.to == 6 &&
+      //         (threats.count(4) || threats.count(5) || threats.count(6)) ||
+      //     // white kingside castling
+      //     move.from == 60 && move.to == 58 &&
+      //         (threats.count(60) || threats.count(59) || threats.count(58))
+      //         ||
+      //     // black queenside castling
+      //     move.from == 4 && move.to == 2 &&
+      //         (threats.count(4) || threats.count(3) || threats.count(2)))
+      //   it = movelist.erase(it);
+      // else
+      //   ++it;
+      // temp.change_turn();
+      bool flag = false;
+      for (int i = move.from;; i += (i < move.to) - (i > move.to)) {
+        auto temp_move = Move(move.from, i);
+        i == move.from ? temp.change_turn() : temp.make_move(temp_move);
+        for (auto& x : temp.generate_pseudo_moves())
+          if (x.to == i) {
+            it = movelist.erase(it);
+            flag = true;
+            break;
+          }
+        i == move.from ? temp.change_turn() : temp.unmake_move(temp_move);
+        if (i == move.to || flag) break;
+      }
+      if (!flag) ++it;
     } else {
       temp.make_move(move);
       bool flag = false;
@@ -529,26 +548,54 @@ vector<Move> Board::generate_legal_moves() {
 
 int Board::perft(int depth, int K_pos) {
   if (depth <= 0) return 1;
-  int nodes = 0;
 
-  for (auto& move : generate_legal_moves()) {
+  auto legal = generate_legal_moves();
+  if (depth == 1) return legal.size();
+
+  int nodes = 0;
+  Board before = *this;
+
+  for (auto& move : legal) {
     make_move(move);
+    Board after = *this;
     int temp_K_pos = board.find(turn == White ? 'K' : 'k');
     // int temp_K_pos = move.from == K_pos ? move.to : K_pos;
     if (!is_in_threat(temp_K_pos)) nodes += perft(depth - 1, temp_K_pos);
     unmake_move(move);
+    if (before.board != this->board) {
+      cerr << "! "
+           << "undo failed" << endl;
+      cerr << "move: ";
+      move.print();
+      cerr << "before:       " << before.to_fen() << endl;
+      cerr << "after move:   " << after.to_fen() << endl;
+      cerr << "after unmove: " << to_fen() << endl;
+      break;
+    }
   }
   return nodes;
 }
 
-void Board::divide(int depth) {
+int Board::divide(int depth) {
   int sum = 0, temp = 0;
   vector<string> moves;
   auto legals = generate_legal_moves();
+  Board before = *this;
   for (auto& move : legals) {
     make_move(move);
+    Board after = *this;
     temp = perft(depth - 1, 0);
     unmake_move(move);
+    if (before.board != this->board) {
+      cerr << "! "
+           << "undo failed" << endl;
+      cerr << "move: ";
+      move.print();
+      cerr << "before:       " << before.to_fen() << endl;
+      cerr << "after move:   " << after.to_fen() << endl;
+      cerr << "after unmove: " << to_fen() << endl;
+      break;
+    }
     sum += temp;
     moves.push_back(to_uci(move) + ": " + to_string(temp));
   }
@@ -556,5 +603,5 @@ void Board::divide(int depth) {
   for (auto& move : moves) cerr << move << endl;
   cerr << "Moves: " << legals.size() << endl;
   cerr << "Nodes: " << sum << endl;
-  // return perft(depth, board.find(turn == White ? 'K' : 'k'));
+  return sum;
 }

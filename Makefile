@@ -1,4 +1,5 @@
 all:
-	g++ main.cpp game.cpp board.cpp -O2
+	g++ -O2 -o main main.cpp game.cpp board.cpp
+	g++ -O2 -o perfttest perfttest.cpp game.cpp board.cpp
 clean:
-	rm -f a.out
+	rm main perfttest

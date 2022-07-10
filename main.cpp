@@ -17,7 +17,7 @@ void test_navigation() {
   while (cin >> cmd) {
     if (cmd == "list" || cmd == "l")
       g.print_movelist();
-    else if (cmd == "divide") {
+    else if (cmd == "perft" || cmd == "divide") {
       int depth;
       cin >> depth;
       g.board.divide(depth);
@@ -75,13 +75,13 @@ void test_navigation() {
       cout << "https://lichess.org/analysis/" << fen << endl;
     } else if (cmd == "display" || cmd == "d") {
       g.board.print();
-      cout << "ply " << g.ply << " end " << g.end << endl;
+      cout << "ply " << g.ply << " end " << g.end << endl
+           << "fen " << g.board.to_fen() << endl;
     } else if (cmd == "quit" || cmd == "q")
       break;
-
     g.board.print();
-    cout << "ply " << g.ply << " end " << g.end << " fen " << g.board.to_fen()
-         << endl;
+    cout << "ply " << g.ply << " end " << g.end << endl
+         << "fen " << g.board.to_fen() << endl;
   }
 }
 
