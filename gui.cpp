@@ -130,6 +130,8 @@ void fen_apply_click() {
 }
 
 void make_move(Move m) {
+  update_gui();
+  msg("Thinking...");
   if (g.make_move(m)) {
     if (g.board.turn == White) {
       if (gtk_check_button_get_active(GTK_CHECK_BUTTON(white_randommover))) {
@@ -146,6 +148,7 @@ void make_move(Move m) {
     }
   }
   update_gui();
+  cout << g.board.eval() << "<<<<<<<<<<<<<<<\n";
 }
 
 void square_click(GtkWidget *widget, gpointer data) {

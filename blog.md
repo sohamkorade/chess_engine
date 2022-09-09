@@ -103,3 +103,10 @@
 ### afternoon
 - another castling bug (capturing rook with king cleared only king's castling rights)
 	reason: `else`
+
+
+## 10 Sept 2022
+### after a loooonngg time!!!
+### 4:50 am
+- there's a lot to tell you, but firstly, i'm very happy now because i just teached my ai to capture pieces and guess what, it doesn't just look one move into the future. yes guys, i wrote the negamax algorithm!! it's much more fun to play with it now. but still it has to prioritize other things besides captures, like promotions, checks, pins etc. and obviously, mates!
+- now i'm going to sleep as i got many works to do :(

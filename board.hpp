@@ -1,4 +1,6 @@
 #pragma once
+#include <fstream>
+
 #include "types.hpp"
 
 class Move {
@@ -47,6 +49,8 @@ class Board {
   bool is_in_check(Player player);
 
   int eval();
+  int negamax(int depth);
+  Move search_best_move();
 
  protected:
   void slide(vector<Move>& movelist, int sq, vector<Direction> dirs);

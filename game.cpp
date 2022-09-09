@@ -63,20 +63,21 @@ Move Game::random_move() {
 }
 
 Move Game::ai_move() {
-  vector<Move> legal = board.generate_legal_moves();
-  Move bestmove;
-  int bestscore = -1e6;
-  for (auto& move : legal) {
-    Game temp = *this;
-    temp.make_move(move);
-    int score = temp.board.eval() * (board.turn == White ? 1 : -1);
-    cout << board.to_san(move) << "=" << score << endl;
-    if (score > bestscore) {
-      bestscore = score;
-      bestmove = move;
-    }
-  }
-  return bestmove;
+  // vector<Move> legal = board.generate_legal_moves();
+  // Move bestmove;
+  // int bestscore = -1e6;
+  // for (auto& move : legal) {
+  //   Game temp = *this;
+  //   temp.make_move(move);
+  //   int score = temp.board.eval() * (board.turn == White ? 1 : -1);
+  //   cout << board.to_san(move) << "=" << score << endl;
+  //   if (score > bestscore) {
+  //     bestscore = score;
+  //     bestmove = move;
+  //   }
+  // }
+  // return bestmove;
+  return board.search_best_move();
 }
 
 Status Game::get_result() {
