@@ -24,11 +24,12 @@ class Board {
   Board();
   char operator[](int i);
   int piece_color(int sq_idx);
-  void print(string sq = "");
+  int sq_color(int sq_idx);
+  void print(string sq = "", bool flipped = false);
   void change_turn();
   void make_move(Move& move);
   void unmake_move(Move& move);
-  void load_fen(string fen);
+  bool load_fen(string fen);
   string to_fen();
   string to_uci(Move move);
   string to_san(Move move);
@@ -42,10 +43,14 @@ class Board {
   int divide(int depth);
   int perft(int depth, int K_pos);
 
+  bool is_in_threat(int sq);
+  bool is_in_check(Player player);
+
+  int eval();
+
  protected:
   void slide(vector<Move>& movelist, int sq, vector<Direction> dirs);
   void add_move(vector<Move>& movelist, int sq, int dest);
-  bool is_in_threat(int sq);
 };
 
 int sq2idx(char file, char rank);

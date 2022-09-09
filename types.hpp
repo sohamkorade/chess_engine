@@ -17,3 +17,4 @@ enum Direction {
   SW = +7
 };
 enum Player { White = 1, Black = -1 };
+enum Status { Undecided, White_wins, Black_wins, Draw };

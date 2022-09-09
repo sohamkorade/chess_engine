@@ -2,6 +2,26 @@
 
 #include <unordered_set>
 
+int material_value(char piece) {
+  int color = isupper(piece) ? 1 : -1;
+  piece = toupper(piece);
+  switch (piece) {
+    case 'K':
+      return color * 10000;
+    case 'Q':
+      return color * 900;
+    case 'R':
+      return color * 500;
+    case 'B':
+      return color * 300;
+    case 'N':
+      return color * 250;
+    case 'P':
+      return color * 100;
+  }
+  return 0;
+}
+
 int sq2idx(char file, char rank) {
   return (file - 'a') + (7 - (rank - '1')) * 8;  // matrix magic
 }
@@ -63,24 +83,45 @@ Board::Board() { load_startpos(); }
 char Board::operator[](int i) { return board[i]; }
 
 int Board::piece_color(int sq_idx) { return isupper(board[sq_idx]) ? 1 : -1; }
+int Board::sq_color(int sq_idx) {
+  return sq_idx % 2 && (sq_idx / 8) % 2 ||
+         sq_idx % 2 == 0 && (sq_idx / 8) % 2 == 0;
+}
 
-void Board::print(string sq) {
+void Board::print(string sq, bool flipped) {
   if (sq.length() > 2)
     sq[0] = sq[2], sq[1] = sq[3];  // extract destination square from move
   int sq_idx = sq != "" ? sq2idx(sq[0], sq[1]) : -1;
-
-  cout << endl << "|";
+  char rank = '8', file = 'a';
+  if (flipped) {
+    if (~sq_idx) sq_idx = 63 - sq_idx;
+    reverse(board.begin(), board.end());
+    rank = '1', file = 'h';
+  }
+  cout << endl << " ";
+  for (int i = 0; i < 8; i++) cout << " " << (flipped ? file-- : file++);
+  cout << endl << (flipped ? rank++ : rank--) << "|";
   for (int i = 0; i < 64; i++) {
-    cout << board[i] << "|";
+    cout << (isupper(board[i]) ? "\e[33m" : "\e[36m");
+    if (board[i] == '.') {
+      if (i % 2 && (i / 8) % 2 || i % 2 == 0 && (i / 8) % 2 == 0)
+        // cout << "\e[47m";
+        cout << ".\e[0m|";
+      else
+        cout << " \e[0m|";
+    } else
+      cout << board[i] << "\e[0m|";
     if (i % 8 == 7) {
       if (~sq_idx && sq_idx / 8 == i / 8) cout << "<";
       cout << endl;
-      if (i != 63) cout << "|";
+      if (i != 63) cout << (flipped ? rank++ : rank--) << "|";
     }
   }
-  if (~sq_idx)
+  if (~sq_idx) {
+    cout << " ";
     for (int i = 0; i < 8; i++) cout << (sq_idx % 8 == i ? " ^" : "  ");
-
+  }
+  if (flipped) reverse(board.begin(), board.end());
   cout << endl;
 }
 
@@ -177,7 +218,7 @@ void Board::unmake_move(Move& move) {
   change_turn();
 }
 
-void Board::load_fen(string fen) {
+bool Board::load_fen(string fen) {
   int part = 0, p = 0;
   char enpassant_sq[2];
   board =
@@ -196,6 +237,7 @@ void Board::load_fen(string fen) {
     if (x == ' ')
       part++, p = 0;
     else if (part == 0) {
+      if (p > 63) return false;
       if (isdigit(x))
         for (int dots = x - '0'; dots--;) board[p++] = '.';
       else if (x != '/')
@@ -223,6 +265,7 @@ void Board::load_fen(string fen) {
   }
   if (~enpassant_sq_idx)
     enpassant_sq_idx = sq2idx(enpassant_sq[0], enpassant_sq[1]);
+  return part > 1;
 }
 
 string Board::to_fen() {
@@ -354,7 +397,9 @@ vector<string> Board::list_san(vector<Move> movelist) {
         san += '=';
         san += move.promotion;
       }
-      if (is_in_threat(board.find(turn == White ? 'k' : 'K'))) san += '+';
+      change_turn();
+      if (is_in_threat(board.find(turn == White ? 'K' : 'k'))) san += '+';
+      change_turn();
     }
 
     temp.push_back(san);
@@ -469,10 +514,21 @@ vector<Move> Board::generate_pseudo_moves() {
 }
 
 bool Board::is_in_threat(int sq) {
-  auto pseudo = generate_pseudo_moves();
-  for (auto& move : pseudo)
+  for (auto& move : generate_pseudo_moves())
     if (move.to == sq) return true;
   return false;
+}
+
+bool Board::is_in_check(Player player) {
+  int K_pos = board.find(player == White ? 'K' : 'k');
+  bool check = false;
+  if (turn == player) {
+    change_turn();
+    check = is_in_threat(K_pos);
+    change_turn();
+  } else
+    check = is_in_threat(K_pos);
+  return check;
 }
 
 Board Board::mark_threats() {
@@ -604,4 +660,16 @@ int Board::divide(int depth) {
   cerr << "Moves: " << legals.size() << endl;
   cerr << "Nodes: " << sum << endl;
   return sum;
+}
+
+int Board::eval() {
+  int material_white = 0, material_black = 0;
+  for (auto& piece : board) {
+    int v = material_value(piece);
+    if (v < 0)
+      material_black -= v;
+    else
+      material_white += v;
+  }
+  return material_white - material_black;
 }

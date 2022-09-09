@@ -1,12 +1,6 @@
 #include "game.hpp"
 
-void test_fen() {
-  string fen =
-      "r2qkbnr/pp3ppp/2np4/2pNp3/4P1b1/6P1/PPPPNP1P/R1BQKB1R w KQkq - 2 6 ";
-  Board b;
-  b.load_fen(fen);
-  b.print();
-}
+bool debug_mode = false;
 
 void test_navigation() {
   Game g;
@@ -77,6 +71,61 @@ void test_navigation() {
       g.board.print();
       cout << "ply " << g.ply << " end " << g.end << endl
            << "fen " << g.board.to_fen() << endl;
+    } else if (cmd == "play") {
+      vector<Move> movelist;
+      Move move;
+      bool white = true;
+      // g.board.load_startpos();
+      cout << "Play as (1) White (2) Black" << endl;
+      cin >> cmd;
+      if (cmd == "2") {
+        move = g.random_move();
+        white = false;
+      }
+      while (cmd != "q") {
+        g.board.print(g.board.to_uci(move), !white);
+        movelist = g.board.generate_legal_moves();
+        cout << "(q) Quit (n) New game" << endl;
+        if (movelist.size() > 0) {
+          for (int i = 0; i < movelist.size(); i++) {
+            cout << "(";
+            cout.width(2);
+            cout << left << i + 1 << flush;
+            cout << ") ";
+            cout.width(7);
+            cout << g.board.to_san(movelist[i]) << flush;
+            if (i % 3 == 2) cout << endl;
+          }
+          cout << endl;
+          cout << "Choose move: ";
+          cin >> cmd;
+          if (cmd == "n") {
+            g.new_game();
+            continue;
+          }
+          int i = 0;
+          if (all_of(cmd.begin(), cmd.end(), ::isdigit)) i = stoi(cmd);
+          if (i > 0 && i <= movelist.size()) {
+            move = movelist[i - 1];
+            g.make_move(movelist[i - 1]);
+          } else
+            cout << "Invalid move.";
+          move = g.random_move();
+          if (move.from == 0 && move.to == 0) {
+            if (g.board.is_in_check(white ? Black : White))
+              cout << "You win!" << endl;
+            else
+              cout << "Stalemate!" << endl;
+            break;
+          }
+        } else {
+          if (g.board.is_in_check(white ? White : Black))
+            cout << "I win!" << endl;
+          else
+            cout << "Stalemate!" << endl;
+          break;
+        }
+      }
     } else if (cmd == "quit" || cmd == "q")
       break;
     g.board.print();
@@ -85,8 +134,93 @@ void test_navigation() {
   }
 }
 
+vector<string> split(string s, string delimiter) {
+  size_t pos_start = 0, pos_end, delim_len = delimiter.length();
+  string token;
+  vector<string> res;
+
+  while ((pos_end = s.find(delimiter, pos_start)) != string::npos) {
+    token = s.substr(pos_start, pos_end - pos_start);
+    pos_start = pos_end + delim_len;
+    res.push_back(token);
+  }
+
+  res.push_back(s.substr(pos_start));
+  return res;
+}
+
+// TODO
+void uci() {
+  Board board;
+  string cmd;
+  vector<string> cmds;
+  while (getline(cin, cmd)) {
+    cmds = split(cmd, " ");
+    int n = cmds.size();
+    if (cmds[0] == "uci") {
+      cout << "id name ColdChess" << endl;
+      cout << "id author Soham Korade" << endl;
+      cout << "uciok" << endl;
+    } else if (cmds[0] == "ucinewgame") {
+    } else if (cmds[0] == "position") {
+      if (n >= 1)
+        if (cmds[1] == "fen") {
+          string fen;
+          for (int i = 2; i < 2 + 6; i++) {
+            cin >> cmd;
+            fen += cmd;
+          }
+          board.load_fen(fen);
+          if (n >= 8 && cmds[8] == "moves") {
+            for (int i = 9; i < n; i++) {
+              Move move(cmds[i]);
+              board.make_move(move);
+            }
+          }
+        } else if (cmds[1] == "startpos") {
+          board.load_startpos();
+          if (n >= 2 && cmds[2] == "moves") {
+            for (int i = 3; i < n; i++) {
+              Move move(cmds[i]);
+              board.make_move(move);
+            }
+          }
+        }
+    } else if (cmds[0] == "go") {
+      if (cmds[1] == "searchmoves") {
+      } else if (cmds[1] == "ponder") {
+      } else if (cmds[1] == "wtime") {
+      } else if (cmds[1] == "btime") {
+      } else if (cmds[1] == "winc") {
+      } else if (cmds[1] == "binc") {
+      } else if (cmds[1] == "movestogo") {
+      } else if (cmds[1] == "depth") {
+      } else if (cmds[1] == "nodes") {
+      } else if (cmds[1] == "mate") {
+      } else if (cmds[1] == "movetime") {
+      } else if (cmds[1] == "infinite") {
+      }
+    } else if (cmds[0] == "stop") {
+    } else if (cmds[0] == "ponderhit") {
+    } else if (cmds[0] == "debug") {
+      debug_mode = cmds[1] == "on";
+    } else if (cmds[0] == "isready") {
+      cout << "readyok" << endl;
+    } else if (cmds[0] == "setioption") {
+    } else if (cmds[0] == "register") {
+    } else if (cmds[0] == "ponderhit") {
+    } else if (cmds[0] == "ponderhit") {
+    } else if (cmds[0] == "ponderhit") {
+    } else if (cmds[0] == "quit") {
+      break;
+    } else {
+      cout << "Invalid command: " << cmd << endl;
+    }
+  }
+}
+
 int main() {
   srand(time(0));
-  // test_fen();
   test_navigation();
+  // uci();
 }
