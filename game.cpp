@@ -16,12 +16,15 @@ bool Game::make_move(Move m) {
   }
   board.make_move(m);
   movelist.push_back(m);
-  auto& alive = (hostile(m.captured, 'K') ? black_alive : white_alive);
-  auto it = alive.find(m.captured);
-  if (it != alive.end()) alive.erase(it);
+  if (m.captured != '.') {
+    auto& alive = (hostile(m.captured, 'K') ? black_alive : white_alive);
+    auto it = alive.find(m.captured);
+    if (it != alive.end()) alive.erase(it);
+  }
 
   ply++, end++;
 
+  transpositions.insert(board.board);
   result = get_result();
   return true;
 }
@@ -62,25 +65,14 @@ Move Game::random_move() {
   return bestmove;
 }
 
-Move Game::ai_move() {
-  // vector<Move> legal = board.generate_legal_moves();
-  // Move bestmove;
-  // int bestscore = -1e6;
-  // for (auto& move : legal) {
-  //   Game temp = *this;
-  //   temp.make_move(move);
-  //   int score = temp.board.eval() * (board.turn == White ? 1 : -1);
-  //   cout << board.to_san(move) << "=" << score << endl;
-  //   if (score > bestscore) {
-  //     bestscore = score;
-  //     bestmove = move;
-  //   }
-  // }
-  // return bestmove;
-  return board.search_best_move();
+pair<Move, int> Game::ai_move() {
+  Board temp = board;
+  AI ai(temp);
+  return ai.search_best_move();
 }
 
 Status Game::get_result() {
+  if (result != Undecided) return result;
   bool can_move = board.generate_legal_moves().size();
   if (!can_move)
     if (board.is_in_check(board.turn))
@@ -107,6 +99,9 @@ Status Game::get_result() {
           board.sq_color(board.board.find('b')))
     return Draw;
 
+  // repetition
+  if (transpositions.count(board.board) == 3) return Draw;
+
   return Undecided;
 }
 
@@ -116,6 +111,7 @@ void Game::new_game() {
   board.load_startpos();
   update_alive();
   result = Undecided;
+  transpositions.clear();
 }
 
 bool Game::load_fen(string fen) {

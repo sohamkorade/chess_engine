@@ -2,6 +2,7 @@
 #include <set>
 #include <unordered_set>
 
+#include "ai.hpp"
 #include "board.hpp"
 
 class Game {
@@ -12,6 +13,7 @@ class Game {
   Status result = Undecided;
   multiset<char> white_alive;
   multiset<char> black_alive;
+  multiset<string> transpositions;
 
   Game();
   bool make_move(string m);
@@ -22,7 +24,7 @@ class Game {
   void print_pgn();
   void seek(int n);
   Move random_move();
-  Move ai_move();
+  pair<Move, int> ai_move();
   Status get_result();
   string get_result_str(Status result);
   void new_game();

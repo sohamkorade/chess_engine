@@ -158,7 +158,7 @@ void uci() {
     cmds = split(cmd, " ");
     int n = cmds.size();
     if (cmds[0] == "uci") {
-      cout << "id name ColdChess" << endl;
+      cout << "id name Chess by Soham" << endl;
       cout << "id author Soham Korade" << endl;
       cout << "uciok" << endl;
     } else if (cmds[0] == "ucinewgame") {

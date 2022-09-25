@@ -12,7 +12,13 @@ class Move {
   int enpassant_sq_idx = -1, fifty = 0, moves = 0;
   Move(string move = "a1a1");
   Move(int _from, int _to, char _promotion = '.', char _captured = '.',
-       bool _enpassant = false, bool _castling = false);
+       bool _enpassant = false, bool _castling = false)
+      : from(_from),
+        to(_to),
+        promotion(_promotion),
+        captured(_captured),
+        enpassant(_enpassant),
+        castling(_castling) {}
   bool is_castling(string move);
   void print();
 };
@@ -47,10 +53,6 @@ class Board {
 
   bool is_in_threat(int sq);
   bool is_in_check(Player player);
-
-  int eval();
-  int negamax(int depth);
-  Move search_best_move();
 
  protected:
   void slide(vector<Move>& movelist, int sq, vector<Direction> dirs);

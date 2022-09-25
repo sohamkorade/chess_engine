@@ -2,26 +2,6 @@
 
 #include <unordered_set>
 
-int material_value(char piece) {
-  int color = isupper(piece) ? 1 : -1;
-  piece = toupper(piece);
-  switch (piece) {
-    case 'K':
-      return color * 10000;
-    case 'Q':
-      return color * 900;
-    case 'R':
-      return color * 500;
-    case 'B':
-      return color * 300;
-    case 'N':
-      return color * 250;
-    case 'P':
-      return color * 100;
-  }
-  return 0;
-}
-
 int sq2idx(char file, char rank) {
   return (file - 'a') + (7 - (rank - '1')) * 8;  // matrix magic
 }
@@ -58,15 +38,6 @@ Move::Move(string move) {
     castling = is_castling(move);
   }
 }
-
-Move::Move(int _from, int _to, char _promotion, char _captured, bool _enpassant,
-           bool _castling)
-    : from(_from),
-      to(_to),
-      promotion(_promotion),
-      captured(_captured),
-      enpassant(_enpassant),
-      castling(_castling) {}
 
 bool Move::is_castling(string move) {
   return move == "e1g1" || move == "e1c1" || move == "e8g8" || move == "e8c8";
@@ -660,68 +631,4 @@ int Board::divide(int depth) {
   cerr << "Moves: " << legals.size() << endl;
   cerr << "Nodes: " << sum << endl;
   return sum;
-}
-
-int Board::eval() {
-  int material_white = 0, material_black = 0;
-  for (auto& piece : board) {
-    int v = material_value(piece);
-    if (v < 0)
-      material_black -= v;
-    else
-      material_white += v;
-  }
-  return material_white - material_black;
-}
-
-// https://www.chessprogramming.org/Negamax
-int Board::negamax(int depth) {
-  if (depth == 0) return eval() * (turn == White ? 1 : -1) + rand() % 6 - 3;
-  int bestscore = -1e6;
-  int max_breadth = 5;
-  ofstream log("log.txt", std::ios_base::app);
-  for (auto& move : generate_legal_moves()) {
-    // if (!max_breadth--) break;
-    make_move(move);
-    int score = -negamax(depth - 1);
-    unmake_move(move);
-    if (score != 0 && depth > 1) {
-      for (int i = 0; i < depth; i++) log << "  ";
-      log << to_san(move) << " = " << score << "\n";
-    }
-    if (score > bestscore && score != 1e6) bestscore = score;
-  }
-  log.close();
-  return bestscore;
-}
-
-Move Board::search_best_move() {
-  Move bestmove;
-  int bestscore = -1e6;
-  int max_breadth = 5;
-  {
-    ofstream log("log.txt");
-    log << "";
-    log.close();
-  }
-  for (auto& move : generate_legal_moves()) {
-    // if (!max_breadth--) break;'
-    make_move(move);
-    int score = -negamax(2);
-    unmake_move(move);
-    ofstream log("log.txt", std::ios_base::app);
-    log << to_san(move) << " = " << score << "\n\n";
-    log.close();
-    if (score > bestscore && score != 1e6) {
-      bestscore = score;
-      bestmove = move;
-    }
-  }
-
-  {
-    ofstream log("log.txt", std::ios_base::app);
-    log << "best: " << to_san(bestmove) << " = " << bestscore << "\n\n";
-    log.close();
-  }
-  return bestmove;
 }
