@@ -15,6 +15,3 @@ class Game {
   void seek(int n);
   void random_move();
 };
-
-void slide(vector<Move>& movelist, Board b, int s, vector<Direction> dirs);
-vector<Move> generate_moves(Board b);
