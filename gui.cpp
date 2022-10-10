@@ -1,22 +1,23 @@
 #include <gtk/gtk.h>
 
 #include <future>
-#include <unordered_map>
+#include <map>
 
 #include "game.hpp"
 
 Game g;
 bool board_flipped = false;
-GtkWidget *squares[64], *chess_board_grid, *statusbar, *move_label;
-GtkEntryBuffer *fen_entry_buffer;
 int sel_sq = -1, prom_sq = -1;
 vector<Move> moves;
-unordered_map<int, Move> promotions;
+map<int, Move> promotions;
+set<int> valid_sqs, valid_capture_sqs;
 
 bool thinking = false;
 bool stop_thinking = false;
 Move premove;
 
+GtkWidget *squares[64], *chess_board_grid, *statusbar, *move_label;
+GtkEntryBuffer *fen_entry_buffer;
 GtkWidget *white_human, *white_randommover, *white_ai, *black_human,
     *black_randommover, *black_ai, *stop_think, *eval_bar;
 
@@ -29,37 +30,33 @@ void msg(string s) {
 }
 
 void display_piece(int sq, char piece) {
-  // const char piece_str[] = {piece, '\0'};
-  // gtk_button_set_label(GTK_BUTTON(squares[sq]), piece_str);
   gtk_widget_set_name(squares[sq], "");
-  if (piece == '.')
-    gtk_widget_set_name(squares[sq], "");
-  else
-    gtk_widget_set_name(squares[sq], string("piece_").append(1, piece).c_str());
+  // if (piece != '.')
+  gtk_widget_set_name(squares[sq], string("piece_").append(1, piece).c_str());
 }
 
-void generate_move_hints(set<int> &valid_sqs, set<int> &valid_capture_sqs) {
+void generate_move_hints() {
   Player actual_turn = g.board.turn;
   if (thinking) g.board.change_turn();
   moves = thinking ? g.board.generate_legal_moves()
                    : g.board.generate_pseudo_moves();
+  valid_sqs.clear();
+  valid_capture_sqs.clear();
   for (auto &move : moves)
     if (move.from == sel_sq)
-      if (g.board[move.to] != '.')
-        valid_capture_sqs.insert(board_flipped ? 63 - move.to : move.to);
-      else
-        valid_sqs.insert(board_flipped ? 63 - move.to : move.to);
+      (g.board[move.to] == '.' ? valid_sqs : valid_capture_sqs)
+          .insert(board_flipped ? 63 - move.to : move.to);
+
+  // deselect square if no valid move possible
   if (valid_sqs.size() == 0 && valid_capture_sqs.size() == 0) sel_sq = -1;
   g.board.turn = actual_turn;
 }
 
 void update_board() {
-  set<int> valid_sqs, valid_capture_sqs;
-  if (~sel_sq && g.result == Undecided)
-    generate_move_hints(valid_sqs, valid_capture_sqs);
-  string &board = g.board.board;
+  if (~sel_sq && g.result == Undecided) generate_move_hints();
+  auto &board = g.board.board;
   if (board_flipped) {
-    reverse(board.begin(), board.end());
+    reverse(board, board + 64);
     if (~sel_sq) sel_sq = 63 - sel_sq;
   }
   int last_from = -1, last_to = -1;
@@ -70,37 +67,48 @@ void update_board() {
     if (board_flipped) {
       last_from = 63 - last_from;
       last_to = 63 - last_to;
+      premove.from = 63 - premove.from;
+      premove.to = 63 - premove.to;
     }
     msg("Moved " + g.board.to_san(last));
   } else
     msg("");
   for (int i = 0; i < 64; i++) {
-    display_piece(i, board[i]);
+    if (!promotions.count(i)) display_piece(i, board[i]);
     for (auto &c : {"selected_sq", "valid_sq", "valid_capture_sq", "check_sq",
                     "premove_sq"})
       gtk_widget_remove_css_class(squares[i], c);
     if (premove.from == i ^ premove.to == i)
       gtk_widget_add_css_class(squares[i], "premove_sq");
-    else {
-      if (i == sel_sq || i == last_from || i == last_to)
-        gtk_widget_add_css_class(squares[i], "selected_sq");
-      if (valid_sqs.count(i)) gtk_widget_add_css_class(squares[i], "valid_sq");
-      if (valid_capture_sqs.count(i))
-        gtk_widget_add_css_class(squares[i], "valid_capture_sq");
-    }
+    else if (i == sel_sq || i == last_from || i == last_to)
+      gtk_widget_add_css_class(squares[i], "selected_sq");
+    else if (valid_sqs.count(i))
+      gtk_widget_add_css_class(squares[i], "valid_sq");
+    else if (valid_capture_sqs.count(i))
+      gtk_widget_add_css_class(squares[i], "valid_capture_sq");
   }
-  int K_pos = board.find(g.board.turn == White ? 'K' : 'k');
-  if (~K_pos && g.board.is_in_check(g.board.turn))
+  // int K_pos = board.find(g.board.turn == White ? 'K' : 'k');
+  int K_pos = g.board.turn == White ? g.board.Kpos : g.board.kpos;
+  if (~K_pos && g.board.is_in_threat(K_pos)) {
+    if (board_flipped) K_pos = 63 - K_pos;
     gtk_widget_add_css_class(squares[K_pos], "check_sq");
+  }
 
   if (board_flipped) {
-    reverse(board.begin(), board.end());
+    reverse(board, board + 64);
     if (~sel_sq) sel_sq = 63 - sel_sq;
+    premove.from = 63 - premove.from;
+    premove.to = 63 - premove.to;
   }
 }
 
 void update_gui() {
   update_board();
+  g.result = g.get_result();
+  // if (g.result == Draw) {
+  //   cout << g.ply / 2 + 1 << endl;
+  //   cout << g.board.pos_hash() << endl;
+  // }
 
   string fen = g.board.to_fen();
   gtk_entry_buffer_set_text(fen_entry_buffer, fen.c_str(), fen.length());
@@ -109,8 +117,6 @@ void update_gui() {
       ("Move: " + to_string(g.ply / 2 + 1) + " " + g.get_result_str(g.result))
           .c_str());
 
-  g.result = g.get_result();
-  if (g.result == Draw) cout << g.ply / 2 + 1 << endl;
   // for (auto &x : g.white_alive) cout << x;
   // cout << " vs ";
   // for (auto &x : g.black_alive) cout << x;
@@ -123,7 +129,6 @@ void next_click() { g.next(), update_gui(); }
 void last_click() { g.seek(g.end), update_gui(); }
 void flip_click() {
   board_flipped = !board_flipped;
-  if (~sel_sq) sel_sq = 63 - sel_sq;
   update_gui();
 }
 void lichess_click() {
@@ -173,13 +178,19 @@ void computer_move() {
 
 void make_legal_move(Move m) {
   for (auto &move : g.board.generate_legal_moves())
-    if (move.from == m.from && move.to == m.to) make_move(m);
+    if (move.from == m.from && move.to == m.to) {
+      make_move(m);
+      break;
+    }
 }
 
 void make_move(Move m) {
   // while (g_main_context_pending(0)) g_main_context_iteration(0, 0);
+  valid_sqs.clear();
+  valid_capture_sqs.clear();
   if (!g.make_move(m)) return;
   update_gui();
+  if (g.result != Undecided) return;
   computer_move();
   make_legal_move(premove);
   premove.from = premove.to;  // reset premove
@@ -189,7 +200,8 @@ void move_intent(int sq) {
   vector<Move> valids;
   for (auto &move : moves)
     if (move.from == sel_sq && move.to == sq) valids.push_back(move);
-  sel_sq = -1;
+  valid_sqs.clear();
+  valid_capture_sqs.clear();
   if (valids.size() == 1)
     if (thinking)
       premove = valids.front();
@@ -200,14 +212,17 @@ void move_intent(int sq) {
     Direction d = prom_sq / 8 == 0 ? S : N;
     for (int i = 0; i < valids.size(); i++) {
       int temp_sq = prom_sq + d * i;
+      if (board_flipped) temp_sq = 63 - temp_sq;
       promotions.insert({temp_sq, valids[i]});
       gtk_widget_add_css_class(squares[temp_sq], "promotion");
       display_piece(temp_sq, valids[i].promotion);
     }
     gtk_widget_add_css_class(chess_board_grid, "promotion");
     return;
-  } else  // illegal move
+  } else if (sel_sq != sq)
     sel_sq = sq;
+  else  // illegal move
+    sel_sq = -1;
 }
 
 void square_click(GtkWidget *widget, gpointer data) {
@@ -223,10 +238,9 @@ void square_click(GtkWidget *widget, gpointer data) {
     gtk_widget_remove_css_class(chess_board_grid, "promotion");
     promotions.clear();
     prom_sq = -1;
-  }
-  if (~sel_sq) {
+  } else if (~sel_sq)
     move_intent(sq);
-  } else
+  else
     sel_sq = sq;
 
   update_gui();
@@ -321,7 +335,7 @@ pair<GtkWidget *, GtkWidget *> create_player_chooser() {
   gtk_box_append(GTK_BOX(black_box), black_randommover);
   gtk_box_append(GTK_BOX(black_box), black_ai);
   gtk_frame_set_child(GTK_FRAME(black_frame), black_box);
-  gtk_check_button_set_active(GTK_CHECK_BUTTON(black_randommover), true);
+  gtk_check_button_set_active(GTK_CHECK_BUTTON(black_ai), true);
 
   return {white_frame, black_frame};
 }
@@ -400,7 +414,7 @@ static void activate(GtkApplication *app, gpointer user_data) {
                                              GTK_STYLE_PROVIDER_PRIORITY_USER);
 
   gtk_window_present(GTK_WINDOW(window));
-  // g.board.load_fen("8/2P5/2N3k1/8/8/2B5/2p2K2/8 w - - 0 1");
+  // g.board.load_fen("8/1k3P2/8/8/8/8/3K4/8 w - - 0 1");
   update_gui();
 }
 

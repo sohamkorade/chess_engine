@@ -1,5 +1,4 @@
 #pragma once
-#include <fstream>
 
 #include "types.hpp"
 
@@ -10,8 +9,7 @@ class Move {
   bool enpassant = false, castling = false;
   bool castling_rights[4] = {};
   int enpassant_sq_idx = -1, fifty = 0, moves = 0;
-  Move(string move = "a1a1");
-  Move(int _from, int _to, char _promotion = '.', char _captured = '.',
+  Move(int _from = 0, int _to = 0, char _promotion = '.', char _captured = '.',
        bool _enpassant = false, bool _castling = false)
       : from(_from),
         to(_to),
@@ -19,22 +17,24 @@ class Move {
         captured(_captured),
         enpassant(_enpassant),
         castling(_castling) {}
-  bool is_castling(string move);
   void print();
 };
 
 class Board {
  public:
-  string board;
+  char board[64];
   bool castling_rights[4] = {};
   int enpassant_sq_idx = -1, fifty = 0, moves = 1;
+  int Kpos = -1, kpos = -1;
   Player turn = White;
+
   Board();
   char operator[](int i);
   int piece_color(int sq_idx);
   int sq_color(int sq_idx);
   void print(string sq = "", bool flipped = false);
   void change_turn();
+  void make_move(string move);
   void make_move(Move& move);
   void unmake_move(Move& move);
   bool load_fen(string fen);
@@ -53,6 +53,8 @@ class Board {
 
   bool is_in_threat(int sq);
   bool is_in_check(Player player);
+
+  string pos_hash();
 
  protected:
   void slide(vector<Move>& movelist, int sq, vector<Direction> dirs);

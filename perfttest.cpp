@@ -4,6 +4,7 @@
 #include "board.hpp"
 
 int main(int argc, char* argv[]) {
+  // cout.setstate(ios_base::failbit);
   string filename = "perftsuite.epd";
   if (argc > 1) filename = argv[1];
   ifstream epd(filename);
@@ -11,6 +12,7 @@ int main(int argc, char* argv[]) {
   string line;
   int k = 1000;
   int count = 1;
+  double total = 0;
   while (getline(epd, line) && k--) {
     cout << "Case #" << count++ << ":" << endl;
     vector<string> parts;
@@ -38,13 +40,21 @@ int main(int argc, char* argv[]) {
       auto end = chrono::high_resolution_clock::now();
       cerr.clear();
 
-      cout << (expected == found ? "\e[32mAC\e[0m" : "\e[31mWA\e[0m") << " ["
-           << chrono::duration_cast<chrono::milliseconds>(end - begin).count() *
-                  1e-3
-           << "s]" << endl;
+      auto elapsed =
+          chrono::duration_cast<chrono::milliseconds>(end - begin).count() *
+          1e-3;
+      total += elapsed;
 
-      if (expected != found) return -1;
+      cout << (expected == found ? "\e[32mAC\e[0m" : "\e[31mWA\e[0m") << " ["
+           << elapsed << "s]" << endl;
+
+      if (expected != found) {
+        cout << "expected '" << expected << "' but found '" << found << "'"
+             << endl;
+        return -1;
+      }
     }
   }
+  cout << "Total time taken: " << total << endl;
   return 0;
 }

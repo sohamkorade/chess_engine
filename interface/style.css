@@ -1,5 +1,5 @@
 * {
-	transition-duration: 0s;
+	transition-duration: 150ms;
 }
 
 #board {
@@ -8,9 +8,10 @@
 	background-size: cover;
 }
 
-#board.promotion {
-	background-color: rgba(22, 21, 18, 0.7);
-}
+/* #board.promotion {
+	background-image: url('brown.png'); 
+	opacity: 0.5;
+} */
 
 .check_sq,
 .check_sq.piece:hover {
@@ -21,7 +22,6 @@
 .selected_sq.piece:hover {
 	/* background-color: rgba(20, 85, 30, 0.5); */
 	background-color: rgba(255, 255, 0, 0.5);
-	/* opacity: 0.5; */
 }
 
 .premove_sq,
@@ -29,14 +29,27 @@
 	background-color: rgba(137, 0, 0, 0.7);
 }
 
-.valid_sq {
+.valid_sq,
+.selected_sq.valid_sq {
 	background: radial-gradient(rgba(20, 85, 30, 0.5) 19%, rgba(0, 0, 0, 0) 20%);
-	/* background-color: rgba(0, 0, 0, .1);
-	padding: 4.2px;
-	transform: translate(4px, 3px); */
+	/* background-color: rgba(0, 0, 0, .1); */
 }
 
-.valid_capture_sq {
+
+/* .valid_sq:hover,
+.selected_sq.valid_sq:hover,
+.valid_capture_sq:hover {
+	background: radial-gradient(rgba(20, 85, 30, 0.5) 19%, rgba(0, 0, 0, 0) 50%);
+	transform: scale(1);
+} */
+
+.piece:hover {
+	/* border-radius: 50%; */
+	background-color: rgba(0, 0, 0, 0.2);
+}
+
+.valid_capture_sq,
+.selected_sq.valid_capture_sq {
 	/* background: radial-gradient(transparent 0%, transparent 79%, rgba(20, 85, 0, 0.3) 80%); */
 	border: 10px solid rgba(20, 85, 30, 0.5);
 	border-radius: 50%;
@@ -44,17 +57,24 @@
 
 .piece.promotion {
 	background-color: white;
+	border-radius: 50%;
+}
+
+.piece.promotion:hover {
+	background-color: rgba(255, 255, 0, 0.5);
+	transform: scale(1.2);
+	/* border-radius: 50%; */
 	/* border: 10px solid rgba(0, 0, 0, .1); */
-	box-shadow: 0 0 20px 20px rgba(0, 0, 0, .5);
+	/* box-shadow: 0 0 20px 20px rgba(0, 0, 0, .5); */
 }
 
 .piece {
 	background-size: cover;
 }
 
-.piece:hover {
+/* .piece:hover {
 	background-color: transparent;
-}
+} */
 
 /* .no_piece {
 	background-size: cover;

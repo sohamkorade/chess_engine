@@ -2,7 +2,7 @@
 
 Game::Game() { new_game(); }
 
-bool Game::make_move(string m) { return make_move(Move(m)); }
+bool Game::make_move(string m) { return make_move(m); }
 
 bool Game::make_move(Move m) {
   if (end > 500) return false;
@@ -21,10 +21,11 @@ bool Game::make_move(Move m) {
     auto it = alive.find(m.captured);
     if (it != alive.end()) alive.erase(it);
   }
+  if (m.captured != '.' || board.board[m.to] == 'p' || board.board[m.to] == 'P')
+    transpositions.clear();
 
   ply++, end++;
-
-  transpositions.insert(board.board);
+  transpositions.insert(board.pos_hash());
   result = get_result();
   return true;
 }
@@ -42,6 +43,7 @@ void Game::print_movelist() {
     movelist[i].print();
   }
 }
+
 void Game::print_pgn() {
   cerr << "PGN" << endl;
   seek(0);
@@ -68,7 +70,7 @@ Move Game::random_move() {
 pair<Move, int> Game::ai_move() {
   Board temp = board;
   AI ai(temp);
-  return ai.search_best_move();
+  return ai.search_best_move(transpositions);
 }
 
 Status Game::get_result() {
@@ -93,14 +95,14 @@ Status Game::get_result() {
   // KBvK or KNvK
   if (b_size == 1 && w_size == 2)
     if (white_alive.count('B') || white_alive.count('N')) return Draw;
-  // KBvKB, bishops being the same color
-  if (b_size == 2 && w_size == 2 &&
-      board.sq_color(board.board.find('B')) ==
-          board.sq_color(board.board.find('b')))
-    return Draw;
+  // // KBvKB, bishops being the same color
+  // if (b_size == 2 && w_size == 2 &&
+  //     board.sq_color(board.board.find('B')) ==
+  //         board.sq_color(board.board.find('b')))
+  //   return Draw;
 
   // repetition
-  if (transpositions.count(board.board) == 3) return Draw;
+  if (transpositions.count(board.pos_hash()) == 3) return Draw;
 
   return Undecided;
 }

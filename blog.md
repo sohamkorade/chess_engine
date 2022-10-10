@@ -110,3 +110,27 @@
 ### 4:50 am
 - there's a lot to tell you, but firstly, i'm very happy now because i just teached my ai to capture pieces and guess what, it doesn't just look one move into the future. yes guys, i wrote the negamax algorithm!! it's much more fun to play with it now. but still it has to prioritize other things besides captures, like promotions, checks, pins etc. and obviously, mates!
 - now i'm going to sleep as i got many works to do :(
+
+## 11 Oct 2022
+### long time no see
+### 3 am
+- well, there's a lot of small and big changes. i'll try to explain by checking the diff.
+- AI part:
+	- replaced minimax with alpha-beta (similar to negamax version)
+	- __TODO__: implement quiescence search
+	- added piece-square table scoring in eval function
+	- reduced branching in code
+- move generation part:
+	- __bugfix__: moves like `e1c1` were always interpreted as castling, fixed
+	- changed board representation from `string` to `char[64]`
+	- now king positions are incrementally saved, so faster to find kings
+	- several optimizations in move generation
+- general:
+	- now engine trys to avoid moves leading to repetitions (but it is not always optimal, so should do something better)
+	- fixed several gui bugs in promotion and flipping
+	- gui supports (some) premoves
+	- fixed some bugs in move hints, still some remaining ig
+	- faster makefile
+- BIGGEST UPDATES:
+	- uci protocol working!
+	- made a [lichess bot](https://lichess.org/@/SohamChessBot) running this engine!
