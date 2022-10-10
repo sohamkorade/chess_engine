@@ -1,8 +1,13 @@
 #include "game.hpp"
 
-void Game::make_move(string m) { make_move(Move(m)); }
+Game::Game() { new_game(); }
 
-void Game::make_move(Move m) {
+bool Game::make_move(string m) { return make_move(m); }
+
+bool Game::make_move(Move m) {
+  if (end > 500) return false;
+  if (m.from == m.to) return false;
+
   if (ply != end) {
     int oldply = ply;
     while (ply < end) next();
@@ -11,10 +16,18 @@ void Game::make_move(Move m) {
   }
   board.make_move(m);
   movelist.push_back(m);
-
-  m.print();
+  if (m.captured != '.') {
+    auto& alive = (hostile(m.captured, 'K') ? black_alive : white_alive);
+    auto it = alive.find(m.captured);
+    if (it != alive.end()) alive.erase(it);
+  }
+  if (m.captured != '.' || board.board[m.to] == 'p' || board.board[m.to] == 'P')
+    transpositions.clear();
 
   ply++, end++;
+  transpositions.insert(board.pos_hash());
+  result = get_result();
+  return true;
 }
 
 void Game::prev() {
@@ -30,6 +43,7 @@ void Game::print_movelist() {
     movelist[i].print();
   }
 }
+
 void Game::print_pgn() {
   cerr << "PGN" << endl;
   seek(0);
@@ -40,11 +54,93 @@ void Game::print_pgn() {
   }
 }
 void Game::seek(int n) {
-  while (ply < n) next();
-  while (ply > n) prev();
+  while (ply < n && ply < end) next();
+  while (ply > n && ply > 0) prev();
 }
 
-void Game::random_move() {
+Move Game::random_move() {
   vector<Move> legal = board.generate_legal_moves();
-  make_move(legal[rand() % legal.size()]);
+  Move bestmove;
+  if (legal.size() > 0) {
+    bestmove = legal[rand() % legal.size()];
+  }
+  return bestmove;
+}
+
+pair<Move, int> Game::ai_move() {
+  Board temp = board;
+  AI ai(temp);
+  return ai.search_best_move(transpositions);
+}
+
+Status Game::get_result() {
+  if (result != Undecided) return result;
+  bool can_move = board.generate_legal_moves().size();
+  if (!can_move)
+    if (board.is_in_check(board.turn))
+      return board.turn == White ? Black_wins : White_wins;
+    else
+      return Draw;
+
+  // obvious draws
+  if (board.fifty >= 100) return Draw;
+
+  int w_size = white_alive.size();
+  int b_size = black_alive.size();
+  // KvK
+  if (w_size == 1 && b_size == 1) return Draw;
+  // KvKB or KvKN
+  if (w_size == 1 && b_size == 2)
+    if (black_alive.count('b') || black_alive.count('n')) return Draw;
+  // KBvK or KNvK
+  if (b_size == 1 && w_size == 2)
+    if (white_alive.count('B') || white_alive.count('N')) return Draw;
+  // // KBvKB, bishops being the same color
+  // if (b_size == 2 && w_size == 2 &&
+  //     board.sq_color(board.board.find('B')) ==
+  //         board.sq_color(board.board.find('b')))
+  //   return Draw;
+
+  // repetition
+  if (transpositions.count(board.pos_hash()) == 3) return Draw;
+
+  return Undecided;
+}
+
+void Game::new_game() {
+  ply = end = 0;
+  movelist.clear();
+  board.load_startpos();
+  update_alive();
+  result = Undecided;
+  transpositions.clear();
+}
+
+bool Game::load_fen(string fen) {
+  new_game();
+  auto temp = board;
+  bool valid = temp.load_fen(fen);
+  if (valid) {
+    board = temp;
+    update_alive();
+    result = get_result();
+  }
+  return valid;
+}
+
+void Game::update_alive() {
+  white_alive.clear();
+  black_alive.clear();
+  for (auto& x : board.board)
+    if (x != '.') (islower(x) ? black_alive : white_alive).insert(x);
+}
+
+string Game::get_result_str(Status result) {
+  if (result == Draw)
+    return "½-½";
+  else if (result == White_wins)
+    return "1-0";
+  else if (result == Black_wins)
+    return "0-1";
+  return "*";
 }

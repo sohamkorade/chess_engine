@@ -1,12 +1,8 @@
+#include "ai.hpp"
+#include "board.hpp"
 #include "game.hpp"
 
-void test_fen() {
-  string fen =
-      "r2qkbnr/pp3ppp/2np4/2pNp3/4P1b1/6P1/PPPPNP1P/R1BQKB1R w KQkq - 2 6 ";
-  Board b;
-  b.load_fen(fen);
-  b.print();
-}
+bool debug_mode = false;
 
 void test_navigation() {
   Game g;
@@ -54,8 +50,7 @@ void test_navigation() {
     } else if (cmd == "move" || cmd == "m") {
       cin >> cmd;
       bool valid = false;
-      vector<Move> pseudo = g.board.generate_pseudo_moves();
-      for (auto &move : pseudo) {
+      for (auto& move : g.board.generate_pseudo_moves()) {
         if (g.board.to_san(move) == cmd || g.board.to_uci(move) == cmd) {
           cout << "Valid move" << endl;
           g.make_move(move);
@@ -77,6 +72,61 @@ void test_navigation() {
       g.board.print();
       cout << "ply " << g.ply << " end " << g.end << endl
            << "fen " << g.board.to_fen() << endl;
+    } else if (cmd == "play") {
+      vector<Move> movelist;
+      Move move;
+      bool white = true;
+      // g.board.load_startpos();
+      cout << "Play as (1) White (2) Black" << endl;
+      cin >> cmd;
+      if (cmd == "2") {
+        move = g.random_move();
+        white = false;
+      }
+      while (cmd != "q") {
+        g.board.print(g.board.to_uci(move), !white);
+        movelist = g.board.generate_legal_moves();
+        cout << "(q) Quit (n) New game" << endl;
+        if (movelist.size() > 0) {
+          for (int i = 0; i < movelist.size(); i++) {
+            cout << "(";
+            cout.width(2);
+            cout << left << i + 1 << flush;
+            cout << ") ";
+            cout.width(7);
+            cout << g.board.to_san(movelist[i]) << flush;
+            if (i % 3 == 2) cout << endl;
+          }
+          cout << endl;
+          cout << "Choose move: ";
+          cin >> cmd;
+          if (cmd == "n") {
+            g.new_game();
+            continue;
+          }
+          int i = 0;
+          if (all_of(cmd.begin(), cmd.end(), ::isdigit)) i = stoi(cmd);
+          if (i > 0 && i <= movelist.size()) {
+            move = movelist[i - 1];
+            g.make_move(movelist[i - 1]);
+          } else
+            cout << "Invalid move.";
+          move = g.random_move();
+          if (move.from == 0 && move.to == 0) {
+            if (g.board.is_in_check(white ? Black : White))
+              cout << "You win!" << endl;
+            else
+              cout << "Stalemate!" << endl;
+            break;
+          }
+        } else {
+          if (g.board.is_in_check(white ? White : Black))
+            cout << "I win!" << endl;
+          else
+            cout << "Stalemate!" << endl;
+          break;
+        }
+      }
     } else if (cmd == "quit" || cmd == "q")
       break;
     g.board.print();
@@ -85,8 +135,126 @@ void test_navigation() {
   }
 }
 
+vector<string> split(string s, string delimiter) {
+  size_t pos_start = 0, pos_end, delim_len = delimiter.length();
+  string token;
+  vector<string> res;
+
+  while ((pos_end = s.find(delimiter, pos_start)) != string::npos) {
+    token = s.substr(pos_start, pos_end - pos_start);
+    pos_start = pos_end + delim_len;
+    res.push_back(token);
+  }
+
+  res.push_back(s.substr(pos_start));
+  return res;
+}
+
+void uci() {
+  multiset<string> transpositions;
+  Board board;
+  string cmd;
+  vector<string> cmds;
+  while (getline(cin, cmd)) {
+    cmds = split(cmd, " ");
+    int n = cmds.size() - 1;
+    if (cmds[0] == "uci") {
+      cout << "id name Chess by Soham" << endl;
+      cout << "id author Soham Korade" << endl;
+      cout << "uciok" << endl;
+    } else if (cmds[0] == "ucinewgame") {
+    } else if (cmds[0] == "position") {
+      transpositions.clear();
+      if (n >= 1)
+        if (cmds[1] == "fen") {
+          string fen;
+          for (int i = 2; i < 2 + 6; i++) fen += cmds[i] + " ";
+          // cout << "--\n{" << fen << "}\n--\n";
+          board.load_fen(fen);
+          if (n >= 8 && cmds[8] == "moves") {
+            for (int i = 9; i < n + 1; i++) {
+              board.make_move(cmds[i]);
+              transpositions.insert(board.pos_hash());
+            }
+          }
+        } else if (cmds[1] == "startpos") {
+          transpositions.clear();
+          board.load_startpos();
+          if (n >= 2 && cmds[2] == "moves") {
+            for (int i = 3; i < n + 1; i++) {
+              board.make_move(cmds[i]);
+              transpositions.insert(board.pos_hash());
+            }
+          }
+        }
+    } else if (cmds[0] == "go") {
+      if (n >= 2)
+        if (cmds[1] == "searchmoves") {
+        } else if (cmds[1] == "ponder") {
+        } else if (cmds[1] == "wtime") {
+        } else if (cmds[1] == "btime") {
+        } else if (cmds[1] == "winc") {
+        } else if (cmds[1] == "binc") {
+        } else if (cmds[1] == "movestogo") {
+        } else if (cmds[1] == "depth") {
+        } else if (cmds[1] == "nodes") {
+        } else if (cmds[1] == "mate") {
+        } else if (cmds[1] == "movetime") {
+        } else if (cmds[1] == "infinite") {
+        } else if (cmds[1] == "startpos") {
+          board.load_startpos();
+          if (n >= 1) {  // n >= 2 && cmds[2] == "moves") {
+            for (int i = 2; i < n + 1; i++) {
+              if (cmds[i] == "nodes") break;
+              board.make_move(cmds[i]);
+              transpositions.insert(board.pos_hash());
+            }
+          }
+        }
+      AI ai(board);
+      auto [bestmove, bestscore] = ai.search_best_move(transpositions);
+      cout << "bestmove " << board.to_uci(bestmove) << endl;
+    } else if (cmds[0] == "stop") {
+    } else if (cmds[0] == "ponderhit") {
+    } else if (cmds[0] == "debug") {
+      debug_mode = cmds[1] == "on";
+    } else if (cmds[0] == "isready") {
+      cout << "readyok" << endl;
+    } else if (cmds[0] == "setoption") {
+    } else if (cmds[0] == "register") {
+    } else if (cmds[0] == "ponderhit") {
+    } else if (cmds[0] == "d") {
+      board.print();
+      cout << "fen: " << board.to_fen() << endl;
+    } else if (cmds[0] == "ponderhit") {
+    } else if (cmds[0] == "quit") {
+      break;
+
+      // additional commands
+    } else if (cmds[0] == "pseudo") {
+      Game temp;
+      copy_n(board.board, 64, temp.board.board);
+      temp.movelist = board.generate_pseudo_moves();
+      temp.print_movelist();
+    } else if (cmds[0] == "legal") {
+      Game temp;
+      copy_n(board.board, 64, temp.board.board);
+      temp.movelist = board.generate_legal_moves();
+      temp.print_movelist();
+    } else if (cmds[0] == "lichess") {
+      string fen = board.to_fen();
+      replace(fen.begin(), fen.end(), ' ', '_');
+      cout << "https://lichess.org/analysis/" << fen << endl;
+    } else if (cmds[0] == "perft" || cmds[0] == "divide") {
+      board.divide(stoi(cmds[1]));
+    } else {
+      cout << "Invalid command: " << cmd << endl;
+    }
+  }
+}
+
 int main() {
   srand(time(0));
-  // test_fen();
-  test_navigation();
+  // test_navigation();
+  uci();
 }

@@ -1,4 +1,5 @@
 #pragma once
+
 #include "types.hpp"
 
 class Move {
@@ -8,27 +9,35 @@ class Move {
   bool enpassant = false, castling = false;
   bool castling_rights[4] = {};
   int enpassant_sq_idx = -1, fifty = 0, moves = 0;
-  Move(string move = "a1a1");
-  Move(int _from, int _to, char _promotion = '.', char _captured = '.',
-       bool _enpassant = false, bool _castling = false);
-  bool is_castling(string move);
+  Move(int _from = 0, int _to = 0, char _promotion = '.', char _captured = '.',
+       bool _enpassant = false, bool _castling = false)
+      : from(_from),
+        to(_to),
+        promotion(_promotion),
+        captured(_captured),
+        enpassant(_enpassant),
+        castling(_castling) {}
   void print();
 };
 
 class Board {
  public:
-  string board;
+  char board[64];
   bool castling_rights[4] = {};
   int enpassant_sq_idx = -1, fifty = 0, moves = 1;
+  int Kpos = -1, kpos = -1;
   Player turn = White;
+
   Board();
   char operator[](int i);
   int piece_color(int sq_idx);
-  void print(string sq = "");
+  int sq_color(int sq_idx);
+  void print(string sq = "", bool flipped = false);
   void change_turn();
+  void make_move(string move);
   void make_move(Move& move);
   void unmake_move(Move& move);
-  void load_fen(string fen);
+  bool load_fen(string fen);
   string to_fen();
   string to_uci(Move move);
   string to_san(Move move);
@@ -42,10 +51,14 @@ class Board {
   int divide(int depth);
   int perft(int depth, int K_pos);
 
+  bool is_in_threat(int sq);
+  bool is_in_check(Player player);
+
+  string pos_hash();
+
  protected:
   void slide(vector<Move>& movelist, int sq, vector<Direction> dirs);
   void add_move(vector<Move>& movelist, int sq, int dest);
-  bool is_in_threat(int sq);
 };
 
 int sq2idx(char file, char rank);
