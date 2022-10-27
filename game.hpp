@@ -26,7 +26,6 @@ class Game {
   Move random_move();
   pair<Move, int> ai_move();
   Status get_result();
-  string get_result_str(Status result);
   void new_game();
   bool load_fen(string fen);
   void update_alive();

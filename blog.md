@@ -134,3 +134,22 @@
 - BIGGEST UPDATES:
 	- uci protocol working!
 	- made a [lichess bot](https://lichess.org/@/SohamChessBot) running this engine!
+
+## 28 Oct 2022
+
+### 3 am
+- bugfixes:
+	- fixed hard to find enpassant bug!
+- AI part:
+	- code refactorings
+	- engine understands clock!!
+	- BIGGEST UPDATES:
+		- iterative deepening
+		- mate distance pruning
+		- null move pruning
+		- late move reduction
+- others:
+	- simplified position hash
+	- engine now avoids draws!
+- TODO: verify all of them, i guess i'm rushing into adding more and more features.
+- i've spent around one week on this commit, now it's time for me to focus on my academics :|

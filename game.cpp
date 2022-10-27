@@ -70,6 +70,7 @@ Move Game::random_move() {
 pair<Move, int> Game::ai_move() {
   Board temp = board;
   AI ai(temp);
+  ai.set_clock(10 * 60 * 1000, 10 * 60 * 1000, 0, 0);
   return ai.search_best_move(transpositions);
 }
 
@@ -133,14 +134,4 @@ void Game::update_alive() {
   black_alive.clear();
   for (auto& x : board.board)
     if (x != '.') (islower(x) ? black_alive : white_alive).insert(x);
-}
-
-string Game::get_result_str(Status result) {
-  if (result == Draw)
-    return "½-½";
-  else if (result == White_wins)
-    return "1-0";
-  else if (result == Black_wins)
-    return "0-1";
-  return "*";
 }

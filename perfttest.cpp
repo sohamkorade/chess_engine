@@ -13,6 +13,7 @@ int main(int argc, char* argv[]) {
   int k = 1000;
   int count = 1;
   double total = 0;
+  cerr.setstate(ios_base::failbit);
   while (getline(epd, line) && k--) {
     cout << "Case #" << count++ << ":" << endl;
     vector<string> parts;
@@ -34,19 +35,17 @@ int main(int argc, char* argv[]) {
         cout << "skipped" << endl;
         continue;
       }
-      cerr.setstate(ios_base::failbit);
       auto begin = chrono::high_resolution_clock::now();
       int found = b.divide(i);
       auto end = chrono::high_resolution_clock::now();
-      cerr.clear();
 
       auto elapsed =
           chrono::duration_cast<chrono::milliseconds>(end - begin).count() *
           1e-3;
       total += elapsed;
 
-      cout << (expected == found ? "\e[32mAC\e[0m" : "\e[31mWA\e[0m") << " ["
-           << elapsed << "s]" << endl;
+      cout << (expected == found ? "\e[32mPASS\e[0m" : "\e[31mFAIL\e[0m")
+           << " [" << elapsed << "s]" << endl;
 
       if (expected != found) {
         cout << "expected '" << expected << "' but found '" << found << "'"
@@ -55,6 +54,7 @@ int main(int argc, char* argv[]) {
       }
     }
   }
+  cerr.clear();
   cout << "Total time taken: " << total << endl;
   return 0;
 }
