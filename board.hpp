@@ -29,7 +29,7 @@ class Board {
   Player turn = White;
 
   Board();
-  char operator[](int i);
+  char operator[](int i) const;
   int piece_color(int sq_idx);
   int sq_color(int sq_idx);
   void print(string sq = "", bool flipped = false);
@@ -42,7 +42,7 @@ class Board {
   string to_uci(Move move);
   string to_san(Move move);
   void load_startpos();
-  bool empty(int idx);
+  bool empty(int idx) const;
   vector<Move> generate_pseudo_moves();
   vector<Move> generate_legal_moves();
   Board mark_threats();
@@ -58,7 +58,7 @@ class Board {
 
  protected:
   void slide(vector<Move>& movelist, int sq, vector<Direction> dirs);
-  void add_move(vector<Move>& movelist, int sq, int dest);
+  void move_or_capture(vector<Move>& movelist, int sq, int dir);
 };
 
 int sq2idx(char file, char rank);

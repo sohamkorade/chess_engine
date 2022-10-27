@@ -13,14 +13,14 @@ vector<Move> Board::generate_pseudo_moves() {
     int file = s % 8, rank = s / 8;
 
     if (rel_piece == 'K') {
-      if (isnt_1(s)) add_move(pseudo, s, S);                // S
-      if (isnt_8(s)) add_move(pseudo, s, N);                // N
-      if (isnt_H(s)) add_move(pseudo, s, E);                // E
-      if (isnt_A(s)) add_move(pseudo, s, W);                // W
-      if (isnt_1(s) && isnt_H(s)) add_move(pseudo, s, SE);  // SE
-      if (isnt_1(s) && isnt_A(s)) add_move(pseudo, s, SW);  // SW
-      if (isnt_8(s) && isnt_H(s)) add_move(pseudo, s, NE);  // NE
-      if (isnt_8(s) && isnt_A(s)) add_move(pseudo, s, NW);  // NW
+      if (isnt_1(s)) move_or_capture(pseudo, s, S);                // S
+      if (isnt_8(s)) move_or_capture(pseudo, s, N);                // N
+      if (isnt_H(s)) move_or_capture(pseudo, s, E);                // E
+      if (isnt_A(s)) move_or_capture(pseudo, s, W);                // W
+      if (isnt_1(s) && isnt_H(s)) move_or_capture(pseudo, s, SE);  // SE
+      if (isnt_1(s) && isnt_A(s)) move_or_capture(pseudo, s, SW);  // SW
+      if (isnt_8(s) && isnt_H(s)) move_or_capture(pseudo, s, NE);  // NE
+      if (isnt_8(s) && isnt_A(s)) move_or_capture(pseudo, s, NW);  // NW
     }
     if (rel_piece == 'P') {
       Direction rel_N = N, rel_NW = NW, rel_NE = NE;
@@ -60,20 +60,20 @@ vector<Move> Board::generate_pseudo_moves() {
     }
     if (rel_piece == 'N') {
       if (rank > 1) {
-        if (isnt_A(s)) add_move(pseudo, s, N + NW);  // UL
-        if (isnt_H(s)) add_move(pseudo, s, N + NE);  // UR
+        if (isnt_A(s)) move_or_capture(pseudo, s, N + NW);  // UL
+        if (isnt_H(s)) move_or_capture(pseudo, s, N + NE);  // UR
       }
       if (file > 1) {
-        if (isnt_8(s)) add_move(pseudo, s, W + NW);  // LU
-        if (isnt_1(s)) add_move(pseudo, s, W + SW);  // LD
+        if (isnt_8(s)) move_or_capture(pseudo, s, W + NW);  // LU
+        if (isnt_1(s)) move_or_capture(pseudo, s, W + SW);  // LD
       }
       if (file < 6) {
-        if (isnt_8(s)) add_move(pseudo, s, E + NE);  // RU
-        if (isnt_1(s)) add_move(pseudo, s, E + SE);  // RD
+        if (isnt_8(s)) move_or_capture(pseudo, s, E + NE);  // RU
+        if (isnt_1(s)) move_or_capture(pseudo, s, E + SE);  // RD
       }
       if (rank < 6) {
-        if (isnt_A(s)) add_move(pseudo, s, S + SW);  // DL
-        if (isnt_H(s)) add_move(pseudo, s, S + SE);  // DR
+        if (isnt_A(s)) move_or_capture(pseudo, s, S + SW);  // DL
+        if (isnt_H(s)) move_or_capture(pseudo, s, S + SE);  // DR
       }
     }
     if (rel_piece == 'B' || rel_piece == 'Q')
@@ -225,14 +225,14 @@ int Board::perft(int depth, int K_pos) {
 }
 
 int Board::divide(int depth) {
-  int sum = 0, temp = 0;
+  int sum = 0;
   vector<string> moves;
   auto legals = generate_legal_moves();
   // Board before = *this;
   for (auto& move : legals) {
     make_move(move);
     // Board after = *this;
-    temp = perft(depth - 1, 0);
+    int nodes = perft(depth - 1, 0);
     unmake_move(move);
     // if (before.board != this->board) {
     //   cerr << "! "
@@ -244,8 +244,8 @@ int Board::divide(int depth) {
     //   cerr << "after unmove: " << to_fen() << endl;
     //   break;
     // }
-    sum += temp;
-    moves.push_back(to_uci(move) + ": " + to_string(temp));
+    sum += nodes;
+    moves.push_back(to_uci(move) + ": " + to_string(nodes));
   }
   sort(moves.begin(), moves.end());
   for (auto& move : moves) cerr << move << endl;
@@ -314,7 +314,7 @@ vector<string> Board::list_san(vector<Move> movelist) {
       san += idx2sq(move.to);
       if (move.promotion != '.') {
         san += '=';
-        san += move.promotion;
+        san += promotion;
       }
       change_turn();
       // if (is_in_threat(board.find(turn == White ? 'K' : 'k'))) san += '+';

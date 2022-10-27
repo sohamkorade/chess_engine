@@ -106,10 +106,9 @@ void test_navigation() {
           }
           int i = 0;
           if (all_of(cmd.begin(), cmd.end(), ::isdigit)) i = stoi(cmd);
-          if (i > 0 && i <= movelist.size()) {
-            move = movelist[i - 1];
+          if (i > 0 && i <= movelist.size())
             g.make_move(movelist[i - 1]);
-          } else
+          else
             cout << "Invalid move.";
           move = g.random_move();
           if (move.from == 0 && move.to == 0) {
@@ -152,9 +151,14 @@ vector<string> split(string s, string delimiter) {
 
 void uci() {
   multiset<string> transpositions;
-  Board board;
+  Board board1;
+  AI ai(board1);
+  auto& board = ai.board;
   string cmd;
   vector<string> cmds;
+
+  int wtime = 60000, btime = 60000, winc = 0, binc = 0;
+
   while (getline(cin, cmd)) {
     cmds = split(cmd, " ");
     int n = cmds.size() - 1;
@@ -192,6 +196,13 @@ void uci() {
         if (cmds[1] == "searchmoves") {
         } else if (cmds[1] == "ponder") {
         } else if (cmds[1] == "wtime") {
+          // example: go wtime 56329 btime 86370 winc 1000 binc 1000
+          wtime = stoi(cmds[2]);
+          btime = stoi(cmds[4]);
+          winc = stoi(cmds[6]);
+          binc = stoi(cmds[8]);
+          ai.set_clock(wtime, btime, winc, binc);
+
         } else if (cmds[1] == "btime") {
         } else if (cmds[1] == "winc") {
         } else if (cmds[1] == "binc") {
@@ -202,16 +213,15 @@ void uci() {
         } else if (cmds[1] == "movetime") {
         } else if (cmds[1] == "infinite") {
         } else if (cmds[1] == "startpos") {
+          transpositions.clear();
           board.load_startpos();
-          if (n >= 1) {  // n >= 2 && cmds[2] == "moves") {
-            for (int i = 2; i < n + 1; i++) {
-              if (cmds[i] == "nodes") break;
-              board.make_move(cmds[i]);
-              transpositions.insert(board.pos_hash());
-            }
+          for (int i = 2; i < n + 1; i++) {
+            if (cmds[i] == "nodes") break;
+            board.make_move(cmds[i]);
+            transpositions.insert(board.pos_hash());
           }
         }
-      AI ai(board);
+      // AI ai(board);
       auto [bestmove, bestscore] = ai.search_best_move(transpositions);
       cout << "bestmove " << board.to_uci(bestmove) << endl;
     } else if (cmds[0] == "stop") {
@@ -222,23 +232,21 @@ void uci() {
       cout << "readyok" << endl;
     } else if (cmds[0] == "setoption") {
     } else if (cmds[0] == "register") {
-    } else if (cmds[0] == "ponderhit") {
     } else if (cmds[0] == "d") {
       board.print();
       cout << "fen: " << board.to_fen() << endl;
-    } else if (cmds[0] == "ponderhit") {
     } else if (cmds[0] == "quit") {
       break;
 
       // additional commands
     } else if (cmds[0] == "pseudo") {
       Game temp;
-      copy_n(board.board, 64, temp.board.board);
+      temp.board = board;
       temp.movelist = board.generate_pseudo_moves();
       temp.print_movelist();
     } else if (cmds[0] == "legal") {
       Game temp;
-      copy_n(board.board, 64, temp.board.board);
+      temp.board = board;
       temp.movelist = board.generate_legal_moves();
       temp.print_movelist();
     } else if (cmds[0] == "lichess") {
@@ -247,6 +255,16 @@ void uci() {
       cout << "https://lichess.org/analysis/" << fen << endl;
     } else if (cmds[0] == "perft" || cmds[0] == "divide") {
       board.divide(stoi(cmds[1]));
+    } else if (cmds[0] == "debugmoves") {
+      for (int i = 1; i < n + 1; i++) {
+        board.make_move(cmds[i]);
+        board.print();
+        cout << "fen: " << board.to_fen() << endl;
+      }
+      board.load_startpos();
+    } else if (cmds[0] == "eval") {
+      // AI ai(board);
+      ai.print_eval();
     } else {
       cout << "Invalid command: " << cmd << endl;
     }

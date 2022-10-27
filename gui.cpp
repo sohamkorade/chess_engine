@@ -44,7 +44,7 @@ void generate_move_hints() {
   valid_capture_sqs.clear();
   for (auto &move : moves)
     if (move.from == sel_sq)
-      (g.board[move.to] == '.' ? valid_sqs : valid_capture_sqs)
+      (g.board.empty(move.to) ? valid_sqs : valid_capture_sqs)
           .insert(board_flipped ? 63 - move.to : move.to);
 
   // deselect square if no valid move possible
@@ -78,7 +78,7 @@ void update_board() {
     for (auto &c : {"selected_sq", "valid_sq", "valid_capture_sq", "check_sq",
                     "premove_sq"})
       gtk_widget_remove_css_class(squares[i], c);
-    if (premove.from == i ^ premove.to == i)
+    if ((premove.from == i) ^ (premove.to == i))
       gtk_widget_add_css_class(squares[i], "premove_sq");
     else if (i == sel_sq || i == last_from || i == last_to)
       gtk_widget_add_css_class(squares[i], "selected_sq");
@@ -102,6 +102,16 @@ void update_board() {
   }
 }
 
+string get_result_str(Status result) {
+  if (result == Draw)
+    return "½-½";
+  else if (result == White_wins)
+    return "1-0";
+  else if (result == Black_wins)
+    return "0-1";
+  return "*";
+}
+
 void update_gui() {
   update_board();
   g.result = g.get_result();
@@ -114,7 +124,7 @@ void update_gui() {
   gtk_entry_buffer_set_text(fen_entry_buffer, fen.c_str(), fen.length());
   gtk_label_set_text(
       GTK_LABEL(move_label),
-      ("Move: " + to_string(g.ply / 2 + 1) + " " + g.get_result_str(g.result))
+      ("Move: " + to_string(g.ply / 2 + 1) + " " + get_result_str(g.result))
           .c_str());
 
   // for (auto &x : g.white_alive) cout << x;
@@ -168,9 +178,9 @@ void computer_move() {
     } else if (gtk_check_button_get_active(GTK_CHECK_BUTTON(
                    g.board.turn == White ? white_ai : black_ai))) {
       auto [move, score] = g.ai_move();
-      gtk_progress_bar_set_inverted(GTK_PROGRESS_BAR(eval_bar), score < 0);
-      gtk_progress_bar_set_fraction(GTK_PROGRESS_BAR(eval_bar),
-                                    abs(score) / 1e4);
+      // gtk_progress_bar_set_inverted(GTK_PROGRESS_BAR(eval_bar), score < 0);
+      // gtk_progress_bar_set_fraction(GTK_PROGRESS_BAR(eval_bar),
+      //                               abs(score) / 1e4);
       make_move(move);
     }
   thinking = false;
@@ -190,6 +200,8 @@ void make_move(Move m) {
   valid_capture_sqs.clear();
   if (!g.make_move(m)) return;
   update_gui();
+  AI ai(g.board);
+  ai.print_eval();
   if (g.result != Undecided) return;
   computer_move();
   make_legal_move(premove);
@@ -414,7 +426,8 @@ static void activate(GtkApplication *app, gpointer user_data) {
                                              GTK_STYLE_PROVIDER_PRIORITY_USER);
 
   gtk_window_present(GTK_WINDOW(window));
-  // g.board.load_fen("8/1k3P2/8/8/8/8/3K4/8 w - - 0 1");
+  // g.board.load_fen(
+  //     "rnbqkbnr/pppppppp/8/8/2B5/5Q2/PPPPPPPP/RNB1K1NR b KQkq - 0 1");
   update_gui();
 }
 
