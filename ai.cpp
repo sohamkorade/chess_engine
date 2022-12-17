@@ -29,6 +29,7 @@ pair<Move, int> AI::search_best_move(multiset<string>& transpositions) {
   Move bestmove;
   Board temp = board;
   auto movelist = get_best_moves();
+  cout << "info bestmoves: " << movelist.size() << endl;
   // auto movelist = monte_carlo();
   for (int i = 1; i >= 0; i--) {
     for (auto& m : movelist) {
@@ -106,6 +107,13 @@ vector<pair<int, Move>> AI::get_best_moves() {
         break;
       }
     }
+
+    // no need to seach deeper if there's only one legal move
+    if (legalmoves.size() == 1) {
+      bestmoves.push_back(legalmoves.front());
+      break;
+    }
+
     for (auto& score_move : legalmoves) {
       // cout << "searching move: " << board.to_san(score_move.second)
       //      << " score: " << score_move.first << endl;
@@ -336,7 +344,7 @@ int AI::negamax(int depth) {
 int reduction(int depth, int moves) { return 1; }
 
 int AI::alphabeta(int depth, int alpha, int beta) {
-  while (g_main_context_pending(0)) g_main_context_iteration(0, 0);
+  // while (g_main_context_pending(0)) g_main_context_iteration(0, 0);
 
   bool is_in_check = board.is_in_check(board.turn);
   if (is_in_check) depth++;
@@ -380,7 +388,7 @@ int AI::alphabeta(int depth, int alpha, int beta) {
 }
 
 int AI::quiesce(int depth, int alpha, int beta) {
-  while (g_main_context_pending(0)) g_main_context_iteration(0, 0);
+  // while (g_main_context_pending(0)) g_main_context_iteration(0, 0);
 
   int pat = eval() * board.turn;
   if (pat >= beta) return beta;

@@ -1,22 +1,25 @@
 FLAGS = @g++ -Ofast
 
-.PHONY: all alll main perfttest gui clean cleano
+.PHONY: all alll main perfttest bestmovetest gui clean cleano
 
-all: main perfttest gui
+all: main perfttest bestmovetest gui
 
 alll:
 	$(FLAGS) -o main main.cpp game.cpp board.cpp movegen.cpp ai.cpp `pkg-config --cflags --libs gtk4`
 	$(FLAGS) -o perfttest perfttest.cpp game.cpp board.cpp movegen.cpp ai.cpp `pkg-config --cflags --libs gtk4`
+	$(FLAGS) -o bestmovetest bestmovetest.cpp game.cpp board.cpp movegen.cpp ai.cpp `pkg-config --cflags --libs gtk4`
 	$(FLAGS) -o gui gui.cpp game.cpp board.cpp movegen.cpp ai.cpp `pkg-config --cflags --libs gtk4`
 
 main: main.o game.o board.o movegen.o ai.o
 	$(FLAGS) -o main main.o game.o board.o movegen.o ai.o `pkg-config --cflags --libs gtk4`
 perfttest: perfttest.o board.o movegen.o 
 	$(FLAGS) -o perfttest perfttest.o board.o movegen.o 
+bestmovetest: bestmovetest.o board.o movegen.o ai.o
+	$(FLAGS) -o bestmovetest bestmovetest.o board.o movegen.o ai.o `pkg-config --cflags --libs gtk4`
 gui: gui.o board.o movegen.o game.o ai.o
 	$(FLAGS) -o gui gui.o board.o movegen.o game.o ai.o `pkg-config --cflags --libs gtk4`
 clean: cleano
-	rm main perfttest gui
+	rm main perfttest bestmovetest gui
 cleano:
 	rm *.o
 
@@ -30,6 +33,8 @@ movegen.o: movegen.cpp
 	$(FLAGS) -c movegen.cpp
 perfttest.o: perfttest.cpp
 	$(FLAGS) -c perfttest.cpp
+bestmovetest.o: bestmovetest.cpp
+	$(FLAGS) -c bestmovetest.cpp `pkg-config --cflags --libs gtk4`
 ai.o: ai.cpp
 	$(FLAGS) -c ai.cpp `pkg-config --cflags --libs gtk4`
 gui.o: gui.cpp
