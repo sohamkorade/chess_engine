@@ -24,5 +24,3 @@ class AI {
 
   void set_clock(int _wtime, int _btime, int _winc, int _binc);
 };
-
-int material_value(char piece);

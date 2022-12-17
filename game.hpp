@@ -11,8 +11,7 @@ class Game {
   vector<Move> movelist;
   int ply = 0, end = 0;
   Status result = Undecided;
-  multiset<char> white_alive;
-  multiset<char> black_alive;
+  multiset<Piece> white_alive,black_alive;
   multiset<string> transpositions;
 
   Game();

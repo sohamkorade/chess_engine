@@ -2,7 +2,7 @@
 
 #include "knowledge.hpp"
 
-int piece_val['z'] = {0};
+int piece_val[13] = {0};
 
 AI::AI(Board& _board) : board(_board) {}
 void AI::set_clock(int _wtime, int _btime, int _winc, int _binc) {
@@ -13,18 +13,18 @@ void AI::set_clock(int _wtime, int _btime, int _winc, int _binc) {
 }
 
 pair<Move, int> AI::search_best_move(multiset<string>& transpositions) {
-  piece_val['K'] = 10000;
-  piece_val['Q'] = 900;
-  piece_val['R'] = 500;
-  piece_val['B'] = 300;
-  piece_val['N'] = 250;
-  piece_val['P'] = 100;
-  piece_val['k'] = -10000;
-  piece_val['q'] = -900;
-  piece_val['r'] = -500;
-  piece_val['b'] = -300;
-  piece_val['n'] = -250;
-  piece_val['p'] = -100;
+  piece_val[wK + 6] = 10000;
+  piece_val[wQ + 6] = 900;
+  piece_val[wR + 6] = 500;
+  piece_val[wB + 6] = 300;
+  piece_val[wN + 6] = 250;
+  piece_val[wP + 6] = 100;
+  piece_val[bK + 6] = -10000;
+  piece_val[bQ + 6] = -900;
+  piece_val[bR + 6] = -500;
+  piece_val[bB + 6] = -300;
+  piece_val[bN + 6] = -250;
+  piece_val[bP + 6] = -100;
   int bestscore = -1e8;
   Move bestmove;
   Board temp = board;
@@ -118,12 +118,12 @@ vector<pair<int, Move>> AI::get_best_moves() {
       // cout << "searching move: " << board.to_san(score_move.second)
       //      << " score: " << score_move.first << endl;
       // int realdepth = late_moves-- > 0 ? depth : depth - rand() % 2;
-      int score, score2;
+      int score;
       // if (!max_breadth--) break;
       board.make_move(score_move.second);
       auto t1 = chrono::high_resolution_clock::now();
       score = -alphabeta(depth, -1e6, +1e6);
-      // score2 = -negamax(depth);
+      // int score2 = -negamax(depth);
       auto t2 = chrono::high_resolution_clock::now();
       auto diff = chrono::duration_cast<chrono::milliseconds>(t2 - t1).count();
       board.unmake_move(score_move.second);
@@ -163,66 +163,17 @@ vector<pair<int, Move>> AI::get_best_moves() {
   return bestmoves;
 }
 
-inline int material_value(char piece) {
-  int color = isupper(piece) ? 1 : -1;
-  piece = toupper(piece);
-  switch (piece) {
-    case 'K':
-      return color * 10000;
-    case 'Q':
-      return color * 900;
-    case 'R':
-      return color * 500;
-    case 'B':
-      return color * 300;
-    case 'N':
-      return color * 250;
-    case 'P':
-      return color * 100;
-  }
-  return 0;
-}
-
 int AI::print_eval() {
   int material_score = 0;
   int pst_score = 0;
   int queens = 0;
   for (int i = 0; i < 64; i++) {
-    char piece = board.board[i];
-    if (piece == 'Q' || piece == 'q') queens++;
-    material_score += piece_val[piece];
-    switch (piece) {
-      case 'P':
-        pst_score += pst_p[i];
-        break;
-      case 'N':
-        pst_score += pst_n[i];
-        break;
-      case 'B':
-        pst_score += pst_b[i];
-        break;
-      case 'R':
-        pst_score += pst_r[i];
-        break;
-      case 'Q':
-        pst_score += pst_q[i];
-        break;
-      case 'p':
-        pst_score -= pst_p[63 - i];
-        break;
-      case 'n':
-        pst_score -= pst_n[63 - i];
-        break;
-      case 'b':
-        pst_score -= pst_b[63 - i];
-        break;
-      case 'r':
-        pst_score -= pst_r[63 - i];
-        break;
-      case 'q':
-        pst_score -= pst_q[63 - i];
-        break;
-    }
+    Piece piece = board.board[i];
+    if (abs(piece) == wQ) queens++;
+    material_score += piece_val[piece + 6];
+    if (piece)
+      pst_score +=
+          pst[abs(piece) - 1][piece > 0 ? i : 63 - i] * (piece > 0 ? 1 : -1);
   }
 
   if (queens == 0) {  // assume near endgame
@@ -233,8 +184,6 @@ int AI::print_eval() {
     int file1 = board.Kpos % 8, rank1 = board.Kpos / 8;
     int file2 = board.kpos % 8, rank2 = board.kpos / 8;
     pst_score += 2 * (14 - (abs(rank2 - rank1) + abs(file2 - file1)));
-  } else {
-    pst_score += pst_k_middle[board.Kpos] - pst_k_middle[63 - board.kpos];
   }
 
   cout << "fen: " << board.to_fen() << endl;
@@ -245,60 +194,15 @@ int AI::print_eval() {
 }
 
 inline int AI::eval() {
-  // int w_material = 1;
-
-  // int white_material = 0, black_material = 0;
-  // for (auto& piece : board.board) {
-  //   int v = material_value(piece);
-  //   if (v < 0)
-  //     black_material -= v;
-  //   else
-  //     white_material += v;
-  // }
-  // int material_score = white_material - black_material;
-
-  // return w_material * material_score;
-
   int material_score = 0;
   int pst_score = 0;
   int mobility_score = 0;
   int queens = 0;
   for (int i = 0; i < 64; i++) {
-    char piece = board.board[i];
-    if (piece == 'Q' || piece == 'q') queens++;
-    material_score += piece_val[piece];
-    switch (piece) {
-      case 'P':
-        pst_score += pst_p[i];
-        break;
-      case 'N':
-        pst_score += pst_n[i];
-        break;
-      case 'B':
-        pst_score += pst_b[i];
-        break;
-      case 'R':
-        pst_score += pst_r[i];
-        break;
-      case 'Q':
-        pst_score += pst_q[i];
-        break;
-      case 'p':
-        pst_score -= pst_p[63 - i];
-        break;
-      case 'n':
-        pst_score -= pst_n[63 - i];
-        break;
-      case 'b':
-        pst_score -= pst_b[63 - i];
-        break;
-      case 'r':
-        pst_score -= pst_r[63 - i];
-        break;
-      case 'q':
-        pst_score -= pst_q[63 - i];
-        break;
-    }
+    Piece piece = board.board[i];
+    if (abs(piece) == wQ) queens++;
+    material_score += piece_val[piece + 6];
+    pst_score += pst[abs(piece) - 1][piece > 0 ? i : 63 - i];
   }
 
   if (queens == 0) {  // assume near endgame
@@ -310,8 +214,6 @@ inline int AI::eval() {
     int file2 = board.kpos % 8, rank2 = board.kpos / 8;
     int md = abs(rank2 - rank1) + abs(file2 - file1);
     pst_score += 5 * cmd + 2 * (14 - md);
-  } else {
-    pst_score += pst_k_middle[board.Kpos] - pst_k_middle[63 - board.kpos];
   }
 
   // int rel_mobility = board.generate_legal_moves().size();
@@ -324,7 +226,7 @@ inline int AI::eval() {
 }
 
 int AI::negamax(int depth) {
-  while (g_main_context_pending(0)) g_main_context_iteration(0, 0);
+  // while (g_main_context_pending(0)) g_main_context_iteration(0, 0);
 
   if (depth == 0) return eval() * board.turn;
   int bestscore = -1e6;
@@ -415,77 +317,4 @@ int AI::quiesce(int depth, int alpha, int beta) {
     return board.is_in_check(board.turn) ? -1e6 - depth : 0;
 
   return alpha;
-}
-
-vector<pair<int, Move>> AI::monte_carlo() {
-  srand(time(0));
-  vector<pair<int, Move>> bestmoves, tempmoves;
-
-  int time_taken = 0;
-  int max_time = (board.turn == White) ? (wtime + winc) : (btime + binc);
-
-  if (max_time == 0) {
-    max_time = INT_MAX;
-    cout << "info using maxdepth: " << max_depth << endl;
-  } else {
-    double percentage = 1;  // 0.88;
-    max_time *= min((percentage + board.moves / 116.4) / 50, percentage);
-    cout << "info using time: " << max_time << endl;
-  }
-
-  auto legals = board.generate_legal_moves();
-  vector<pair<int, Move>> legalmoves;
-  for (auto& move : legals) legalmoves.push_back({0, move});
-
-  for (int depth = 1; time_taken * 2 < max_time && depth <= max_depth;
-       depth++) {
-    tempmoves = bestmoves;
-    bestmoves.clear();
-    sort(legalmoves.begin(), legalmoves.end(),
-         [](auto& a, auto& b) { return a.first > b.first; });
-
-    for (auto& score_move : legalmoves) {
-      int score;
-      score = 0;
-      auto t1 = chrono::high_resolution_clock::now();
-      for (int i = 0; i < 2; i++) {
-        Board* temp = new Board(board);
-        temp->make_move(score_move.second);
-        int c = 0;
-        while (c++) {
-          if (temp->moves >= 100 || temp->fifty >= 100) {
-            AI ai(*temp);
-            score += ai.eval() > 0;
-            break;
-          }
-          while (g_main_context_pending(0)) g_main_context_iteration(0, 0);
-          auto movelist = temp->generate_legal_moves();
-          if (movelist.size() == 0) {
-            score += board.is_in_check(board.turn) ? -board.turn : 0;
-            break;
-          } else {
-            auto random_move = movelist[0];
-            temp->make_move(random_move);
-          }
-          delete &temp;
-        }
-      }
-      auto t2 = chrono::high_resolution_clock::now();
-      auto diff = chrono::duration_cast<chrono::milliseconds>(t2 - t1).count();
-      time_taken += diff;
-      if (time_taken >= max_time && bestmoves.size() > 1) {
-        for (auto& x : tempmoves) bestmoves.push_back(x);
-        break;
-      }
-      score_move.first = score;
-      cout << "info"
-           << " depth " << depth << " score cp " << score << " nodes 1 time "
-           << diff << " pv " << board.to_uci(score_move.second) << endl;
-
-      bestmoves.push_back({score, score_move.second});
-    }
-    cout << "info time: " << time_taken << " depth: " << depth << endl;
-    cout << "info total time: " << time_taken << endl;
-  }
-  return bestmoves;
 }

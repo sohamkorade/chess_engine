@@ -88,7 +88,7 @@ void test_navigation() {
         movelist = g.board.generate_legal_moves();
         cout << "(q) Quit (n) New game" << endl;
         if (movelist.size() > 0) {
-          for (int i = 0; i < movelist.size(); i++) {
+          for (size_t i = 0; i < movelist.size(); i++) {
             cout << "(";
             cout.width(2);
             cout << left << i + 1 << flush;
@@ -104,7 +104,7 @@ void test_navigation() {
             g.new_game();
             continue;
           }
-          int i = 0;
+          size_t i = 0;
           if (all_of(cmd.begin(), cmd.end(), ::isdigit)) i = stoi(cmd);
           if (i > 0 && i <= movelist.size())
             g.make_move(movelist[i - 1]);
@@ -169,7 +169,7 @@ void uci() {
     } else if (cmds[0] == "ucinewgame") {
     } else if (cmds[0] == "position") {
       transpositions.clear();
-      if (n >= 1)
+      if (n >= 1) {
         if (cmds[1] == "fen") {
           string fen;
           for (int i = 2; i < 2 + 6; i++) fen += cmds[i] + " ";
@@ -191,8 +191,9 @@ void uci() {
             }
           }
         }
+      }
     } else if (cmds[0] == "go") {
-      if (n >= 2)
+      if (n >= 2) {
         if (cmds[1] == "searchmoves") {
         } else if (cmds[1] == "ponder") {
         } else if (cmds[1] == "wtime") {
@@ -221,6 +222,7 @@ void uci() {
             transpositions.insert(board.pos_hash());
           }
         }
+      }
       // AI ai(board);
       auto [bestmove, bestscore] = ai.search_best_move(transpositions);
       cout << "bestmove " << board.to_uci(bestmove) << endl;

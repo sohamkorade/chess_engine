@@ -6,11 +6,11 @@ class Move {
  public:
   int from = 0, to = 0;
   int enpassant_sq_idx = -1, fifty = 0, moves = 0;
-  char promotion = '.', captured = '.';
+  Piece promotion = Empty, captured = Empty;
   bool castling_rights[4] = {};
   bool enpassant = false, castling = false;
-  Move(int _from = 0, int _to = 0, char _promotion = '.', char _captured = '.',
-       bool _enpassant = false, bool _castling = false)
+  Move(int _from = 0, int _to = 0, Piece _promotion = Empty,
+       Piece _captured = Empty, bool _enpassant = false, bool _castling = false)
       : from(_from),
         to(_to),
         promotion(_promotion),
@@ -22,14 +22,14 @@ class Move {
 
 class Board {
  public:
-  char board[64];
+  Piece board[64];
   int enpassant_sq_idx = -1, fifty = 0, moves = 1;
   int Kpos = -1, kpos = -1;
   bool castling_rights[4] = {};
   Player turn = White;
 
   Board();
-  char operator[](int i) const;
+  Piece operator[](int i) const;
   int piece_color(int sq_idx);
   int sq_color(int sq_idx);
   void print(string sq = "", bool flipped = false);
@@ -46,7 +46,7 @@ class Board {
   vector<Move> generate_pseudo_moves();
   vector<Move> generate_legal_moves();
   Board mark_threats();
-  Move match_san(vector<Move> movelist, string san);
+  // Move match_san(vector<Move> movelist, string san);
   vector<string> list_san(vector<Move> movelist);
   int divide(int depth);
   int perft(int depth, int K_pos);
@@ -63,8 +63,8 @@ class Board {
 
 int sq2idx(char file, char rank);
 string idx2sq(int idx);
-bool friendly(char a, char b);
-bool hostile(char a, char b);
+bool friendly(Piece a, Piece b);
+bool hostile(Piece a, Piece b);
 bool in_board(int idx);
 bool isnt_H(int idx);
 bool isnt_A(int idx);
@@ -73,3 +73,6 @@ bool isnt_1(int idx);
 
 bool westwards(Direction dir);
 bool eastwards(Direction dir);
+
+Piece char2piece(char p);
+char piece2char(Piece p);

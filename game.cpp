@@ -16,12 +16,12 @@ bool Game::make_move(Move m) {
   }
   board.make_move(m);
   movelist.push_back(m);
-  if (m.captured != '.') {
-    auto& alive = (hostile(m.captured, 'K') ? black_alive : white_alive);
+  if (m.captured != Empty) {
+    auto& alive = (hostile(m.captured, wK) ? black_alive : white_alive);
     auto it = alive.find(m.captured);
     if (it != alive.end()) alive.erase(it);
   }
-  if (m.captured != '.' || board.board[m.to] == 'p' || board.board[m.to] == 'P')
+  if (m.captured != Empty || board.board[m.to] == bP || board.board[m.to] == wP)
     transpositions.clear();
 
   ply++, end++;
@@ -38,7 +38,7 @@ void Game::next() {
 }
 
 void Game::print_movelist() {
-  for (int i = 0; i < movelist.size(); i++) {
+  for (size_t i = 0; i < movelist.size(); i++) {
     cerr << i + 1 << " " << board.to_san(movelist[i]) << "    ";
     movelist[i].print();
   }
@@ -77,25 +77,26 @@ pair<Move, int> Game::ai_move() {
 Status Game::get_result() {
   if (result != Undecided) return result;
   bool can_move = board.generate_legal_moves().size();
-  if (!can_move)
+  if (!can_move) {
     if (board.is_in_check(board.turn))
       return board.turn == White ? Black_wins : White_wins;
     else
       return Draw;
+  }
 
   // obvious draws
   if (board.fifty >= 100) return Draw;
 
-  int w_size = white_alive.size();
-  int b_size = black_alive.size();
+  size_t w_size = white_alive.size();
+  size_t b_size = black_alive.size();
   // KvK
   if (w_size == 1 && b_size == 1) return Draw;
   // KvKB or KvKN
   if (w_size == 1 && b_size == 2)
-    if (black_alive.count('b') || black_alive.count('n')) return Draw;
+    if (black_alive.count(bB) || black_alive.count(bN)) return Draw;
   // KBvK or KNvK
   if (b_size == 1 && w_size == 2)
-    if (white_alive.count('B') || white_alive.count('N')) return Draw;
+    if (white_alive.count(wB) || white_alive.count(wN)) return Draw;
   // // KBvKB, bishops being the same color
   // if (b_size == 2 && w_size == 2 &&
   //     board.sq_color(board.board.find('B')) ==
@@ -133,5 +134,5 @@ void Game::update_alive() {
   white_alive.clear();
   black_alive.clear();
   for (auto& x : board.board)
-    if (x != '.') (islower(x) ? black_alive : white_alive).insert(x);
+    if (x != Empty) (x < 0 ? black_alive : white_alive).insert(x);
 }
