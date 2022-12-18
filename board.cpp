@@ -103,7 +103,7 @@ void Board::make_move(Move& move) {
   copy_n(castling_rights, 4, move.castling_rights);
   move.enpassant_sq_idx = enpassant_sq_idx;
   move.fifty = fifty;
-  move.moves = moves;
+  // move.moves = moves;
 
   // update half-move clock
   if (board[move.to] != '.' || board[move.from] == 'P' ||
@@ -169,7 +169,7 @@ void Board::unmake_move(Move& move) {
   copy_n(move.castling_rights, 4, castling_rights);
   enpassant_sq_idx = move.enpassant_sq_idx;
   fifty = move.fifty;
-  moves = move.moves;
+  // moves = move.moves;
 
   // restore king pos
   if (board[move.to] == 'K') Kpos = move.from;
