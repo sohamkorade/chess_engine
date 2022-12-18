@@ -10,13 +10,9 @@ string idx2sq(int idx) {
   return sq.append(1, (7 - idx / 8) + '1');
 }
 
-bool friendly(char a, char b) {
-  return isupper(a) && isupper(b) || islower(a) && islower(b);
-}
+bool friendly(Piece a, Piece b) { return a * b > 0; }
 
-bool hostile(char a, char b) {
-  return isupper(a) && islower(b) || islower(a) && isupper(b);
-}
+bool hostile(Piece a, Piece b) { return a * b < 0; }
 
 bool in_board(int idx) { return idx >= 0 && idx < 64; }
 bool isnt_H(int idx) { return idx % 8 != 7; }
@@ -27,6 +23,27 @@ bool isnt_1(int idx) { return idx / 8 != 7; }
 bool westwards(Direction dir) { return dir == NW || dir == SW || dir == W; }
 bool eastwards(Direction dir) { return dir == NE || dir == SE || dir == E; }
 
+Piece char2piece(char p) {
+  // if (p == '.') return Empty;
+  // if (p == 'p') return bP;
+  // if (p == 'n') return bN;
+  // if (p == 'b') return bB;
+  // if (p == 'r') return bR;
+  // if (p == 'q') return bQ;
+  // if (p == 'k') return bK;
+  // if (p == 'P') return wP;
+  // if (p == 'N') return wN;
+  // if (p == 'B') return wB;
+  // if (p == 'R') return wR;
+  // if (p == 'Q') return wQ;
+  // if (p == 'K') return wK;
+  size_t pos = string("kqrbnp.PNBRQK").find(p);
+  if (pos != string::npos) return static_cast<Piece>(pos - 6);
+  return Empty;
+}
+
+char piece2char(Piece p) { return "kqrbnp.PNBRQK"[p + 6]; }
+
 void Board::make_move(string move) {
   Move temp;
   int l = move.length();
@@ -34,11 +51,11 @@ void Board::make_move(string move) {
     temp.from = sq2idx(move[0], move[1]);
     temp.to = sq2idx(move[2], move[3]);
     if (l == 5)
-      temp.promotion = turn == White ? toupper(move[4]) : tolower(move[4]);
-    temp.castling = temp.from == Kpos && (move == "e1g1" || move == "e1c1") ||
-                    temp.from == kpos && (move == "e8g8" || move == "e8c8");
-    temp.enpassant = (board[temp.from] == 'p' || board[temp.from] == 'P') &&
-                     enpassant_sq_idx == temp.to;
+      temp.promotion =
+          char2piece(turn == White ? toupper(move[4]) : tolower(move[4]));
+    temp.castling = (temp.from == Kpos && (move == "e1g1" || move == "e1c1")) ||
+                    (temp.from == kpos && (move == "e8g8" || move == "e8c8"));
+    temp.enpassant = abs(board[temp.from]) == wP && enpassant_sq_idx == temp.to;
   }
   make_move(temp);
 }
@@ -51,12 +68,12 @@ void Move::print() {
 
 Board::Board() { load_startpos(); }
 
-char Board::operator[](int i) const { return board[i]; }
+Piece Board::operator[](int i) const { return board[i]; }
 
 int Board::piece_color(int sq_idx) { return isupper(board[sq_idx]) ? 1 : -1; }
 int Board::sq_color(int sq_idx) {
-  return sq_idx % 2 && (sq_idx / 8) % 2 ||
-         sq_idx % 2 == 0 && (sq_idx / 8) % 2 == 0;
+  return (sq_idx % 2 && (sq_idx / 8) % 2) ||
+         (sq_idx % 2 == 0 && (sq_idx / 8) % 2 == 0);
 }
 
 void Board::print(string sq, bool flipped) {
@@ -74,14 +91,14 @@ void Board::print(string sq, bool flipped) {
   cout << endl << (flipped ? rank++ : rank--) << "|";
   for (int i = 0; i < 64; i++) {
     cout << (isupper(board[i]) ? "\e[33m" : "\e[36m");
-    if (board[i] == '.') {
-      if (i % 2 && (i / 8) % 2 || i % 2 == 0 && (i / 8) % 2 == 0)
+    if (board[i] == Empty) {
+      if ((i % 2 && (i / 8) % 2) || (i % 2 == 0 && (i / 8) % 2 == 0))
         // cout << "\e[47m";
         cout << ".\e[0m|";
       else
         cout << " \e[0m|";
     } else
-      cout << board[i] << "\e[0m|";
+      cout << piece2char(board[i]) << "\e[0m|";
     if (i % 8 == 7) {
       if (~sq_idx && sq_idx / 8 == i / 8) cout << "<";
       cout << endl;
@@ -106,27 +123,26 @@ void Board::make_move(Move& move) {
   // move.moves = moves;
 
   // update half-move clock
-  if (board[move.to] != '.' || board[move.from] == 'P' ||
-      board[move.from] == 'p')
+  if (board[move.to] != Empty || abs(board[move.from]) == wP)
     fifty = 0;
   else
     fifty++;
 
   // update castling rights and king pos
-  if (board[move.from] == 'K') {
+  if (board[move.from] == wK) {
     castling_rights[0] = castling_rights[1] = false;
     Kpos = move.to;
-  } else if (board[move.from] == 'k') {
+  } else if (board[move.from] == bK) {
     castling_rights[2] = castling_rights[3] = false;
     kpos = move.to;
   }
-  if (board[move.from] == 'R' || board[move.to] == 'R') {
+  if (board[move.from] == wR || board[move.to] == wR) {
     if (move.from == 63 || move.to == 63)
       castling_rights[0] = false;
     else if (move.from == 56 || move.to == 56)
       castling_rights[1] = false;
   }
-  if (board[move.from] == 'r' || board[move.to] == 'r') {
+  if (board[move.from] == bR || board[move.to] == bR) {
     if (move.from == 7 || move.to == 7)
       castling_rights[2] = false;
     else if (move.from == 0 || move.to == 0)
@@ -134,31 +150,31 @@ void Board::make_move(Move& move) {
   }
 
   // update enpassant square
-  if (board[move.from] == 'P' && move.to - move.from == N + N)
+  if (board[move.from] == wP && move.to - move.from == N + N)
     enpassant_sq_idx = move.from + N;
-  else if (board[move.from] == 'p' && move.to - move.from == S + S)
+  else if (board[move.from] == bP && move.to - move.from == S + S)
     enpassant_sq_idx = move.from + S;
   else
     enpassant_sq_idx = -1;
 
   // update board
-  char captured = board[move.to];
-  board[move.to] = move.promotion == '.' ? board[move.from] : move.promotion;
+  Piece captured = board[move.to];
+  board[move.to] = move.promotion == Empty ? board[move.from] : move.promotion;
   board[move.from] = move.captured;
   move.captured = captured;
 
   if (move.castling) {  // move rook when castling
     if (move.from == 4 && move.to == 6)
-      board[7] = '.', board[5] = 'r';
+      board[7] = Empty, board[5] = bR;
     else if (move.from == 4 && move.to == 2)
-      board[0] = '.', board[3] = 'r';
+      board[0] = Empty, board[3] = bR;
     else if (move.from == 60 && move.to == 62)
-      board[63] = '.', board[61] = 'R';
+      board[63] = Empty, board[61] = wR;
     else if (move.from == 60 && move.to == 58)
-      board[56] = '.', board[59] = 'R';
+      board[56] = Empty, board[59] = wR;
   } else if (move.enpassant) {  // remove pawn when enpassant
     int rel_S = turn * S;       //(turn == White ? S : N);
-    board[move.to + rel_S] = '.';
+    board[move.to + rel_S] = Empty;
   }
   change_turn();
 
@@ -172,28 +188,28 @@ void Board::unmake_move(Move& move) {
   // moves = move.moves;
 
   // restore king pos
-  if (board[move.to] == 'K') Kpos = move.from;
-  if (board[move.to] == 'k') kpos = move.from;
+  if (board[move.to] == wK) Kpos = move.from;
+  if (board[move.to] == bK) kpos = move.from;
 
   // update board
-  char captured = board[move.from];
+  Piece captured = board[move.from];
   board[move.from] =
-      move.promotion == '.' ? board[move.to] : (turn == Black ? 'P' : 'p');
+      move.promotion == Empty ? board[move.to] : (turn == Black ? wP : bP);
   board[move.to] = move.captured;
   move.captured = captured;
 
   if (move.castling) {  // move rook when castling
     if (move.from == 4 && move.to == 6)
-      board[7] = 'r', board[5] = '.';
+      board[7] = bR, board[5] = Empty;
     else if (move.from == 4 && move.to == 2)
-      board[0] = 'r', board[3] = '.';
+      board[0] = bR, board[3] = Empty;
     else if (move.from == 60 && move.to == 62)
-      board[63] = 'R', board[61] = '.';
+      board[63] = wR, board[61] = Empty;
     else if (move.from == 60 && move.to == 58)
-      board[56] = 'R', board[59] = '.';
+      board[56] = wR, board[59] = Empty;
   } else if (move.enpassant) {  // add pawn when enpassant
     int rel_N = turn * N;       // (turn == White ? N : S);
-    board[move.to + rel_N] = (turn == White ? 'P' : 'p');  // TODO:verify
+    board[move.to + rel_N] = (turn == White ? wP : bP);  // TODO:verify
   }
   change_turn();
 
@@ -201,7 +217,7 @@ void Board::unmake_move(Move& move) {
 }
 
 bool Board::load_fen(string fen) {
-  fill_n(board, 64, '.');
+  fill_n(board, 64, Empty);
   int part = 0, p = 0;
   char enpassant_sq[2];
   enpassant_sq_idx = 0, fifty = 0, moves = 0;
@@ -213,9 +229,9 @@ bool Board::load_fen(string fen) {
     } else if (part == 0) {
       if (p > 63) return false;
       if (isdigit(x))
-        for (int dots = x - '0'; dots--;) board[p++] = '.';
+        for (int dots = x - '0'; dots--;) board[p++] = Empty;
       else if (x != '/')
-        board[p++] = x;
+        board[p++] = char2piece(x);
     } else if (part == 1) {
       turn = x == 'w' ? White : Black;
     } else if (part == 2) {
@@ -241,8 +257,8 @@ bool Board::load_fen(string fen) {
   }
   if (~enpassant_sq_idx)
     enpassant_sq_idx = sq2idx(enpassant_sq[0], enpassant_sq[1]);
-  Kpos = distance(board, find(board, board + 64, 'K'));
-  kpos = distance(board, find(board, board + 64, 'k'));
+  Kpos = distance(board, find(board, board + 64, wK));
+  kpos = distance(board, find(board, board + 64, bK));
   // for (int i = 0; i < 64; i++)
   //   if (board[i] == 'K')
   //     Kpos = i;
@@ -256,12 +272,12 @@ string Board::to_fen() {
   string fen = "";
   int blanks = 0;
   for (int i = 0; i < 64; i++) {
-    if (board[i] == '.') blanks++;
-    if (blanks > 0 && (board[i] != '.' || !isnt_H(i))) {
+    if (board[i] == Empty) blanks++;
+    if (blanks > 0 && (board[i] != Empty || !isnt_H(i))) {
       fen += '0' + blanks;
       blanks = 0;
     }
-    if (board[i] != '.') fen += board[i];
+    if (board[i] != Empty) fen += piece2char(board[i]);
     if (!isnt_H(i) && i != 63) fen += '/';
   }
   fen += " ";
@@ -285,26 +301,27 @@ string Board::to_fen() {
 
 string Board::to_uci(Move move) {
   string uci = idx2sq(move.from) + idx2sq(move.to);
-  if (move.promotion != '.')
-    return uci + move.promotion;
+  if (move.promotion != Empty)
+    return uci + piece2char(move.promotion);
   else
     return uci;
 }
 
 string Board::to_san(Move move) {
-  char piece = toupper(board[move.from]);
+  Piece piece = static_cast<Piece>(abs(board[move.from]));
   string san;
   if (move.castling) {
-    if (move.from == 4 && move.to == 6 || move.from == 60 && move.to == 62)
+    if ((move.from == 4 && move.to == 6) || (move.from == 60 && move.to == 62))
       san = "O-O";
-    else if (move.from == 4 && move.to == 2 || move.from == 60 && move.to == 58)
+    else if ((move.from == 4 && move.to == 2) ||
+             (move.from == 60 && move.to == 58))
       san = "O-O-O";
   } else {
-    if (piece != 'P' && piece != '.') san = piece;
+    if (piece != wP && piece != Empty) san = piece2char(piece);
     san += idx2sq(move.from);
     if (!empty(move.to) || move.enpassant) san += 'x';
     san += idx2sq(move.to);
-    if (move.promotion != '.') {
+    if (move.promotion != Empty) {
       san += '=';
       san += toupper(move.promotion);
     }
@@ -317,7 +334,7 @@ void Board::load_startpos() {
   load_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
 }
 
-bool Board::empty(int idx) const { return board[idx] == '.'; }
+bool Board::empty(int idx) const { return board[idx] == Empty; }
 
 void Board::slide(vector<Move>& movelist, int sq, vector<Direction> dirs) {
   for (auto& dir : dirs) {
@@ -352,7 +369,7 @@ void Board::move_or_capture(vector<Move>& movelist, int sq, int dir) {
 
 string Board::pos_hash() {
   string fen = "";
-  for (auto& s : board) fen += s;
+  for (auto& s : board) fen += piece2char(s);
   fen += "|";
   fen += (turn == White ? "w" : "b");
   fen += "|";

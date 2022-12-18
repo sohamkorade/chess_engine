@@ -1,4 +1,4 @@
-FLAGS = @g++ -Ofast
+FLAGS = @g++ -Wall -Ofast
 
 .PHONY: all alll main perfttest bestmovetest gui clean cleano
 

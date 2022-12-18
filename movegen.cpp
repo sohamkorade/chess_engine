@@ -2,17 +2,18 @@
 
 vector<Move> Board::generate_pseudo_moves() {
   vector<Move> pseudo;
-  char promotions[4];
-  copy_n(turn == Black ? "qrbn" : "QRBN", 4, promotions);
+  Piece promotions[4] = {wQ, wR, wB, wN};
+  Piece black_promotions[4] = {bQ, bR, bB, bN};
+  copy_n(black_promotions, 4, promotions);
   for (int s = 0; s < 64; s++) {
-    char piece = board[s];
-    if (hostile(piece, turn == Black ? 'k' : 'K'))
+    Piece piece = board[s];
+    if (hostile(piece, turn == Black ? bK : wK))
       continue;  // not current player's pieces
-    char rel_piece = toupper(piece);
+    Piece rel_piece = static_cast<Piece>(abs(piece));
 
     int file = s % 8, rank = s / 8;
 
-    if (rel_piece == 'K') {
+    if (rel_piece == wK) {
       if (isnt_1(s)) move_or_capture(pseudo, s, S);                // S
       if (isnt_8(s)) move_or_capture(pseudo, s, N);                // N
       if (isnt_H(s)) move_or_capture(pseudo, s, E);                // E
@@ -22,7 +23,7 @@ vector<Move> Board::generate_pseudo_moves() {
       if (isnt_8(s) && isnt_H(s)) move_or_capture(pseudo, s, NE);  // NE
       if (isnt_8(s) && isnt_A(s)) move_or_capture(pseudo, s, NW);  // NW
     }
-    if (rel_piece == 'P') {
+    if (rel_piece == wP) {
       Direction rel_N = N, rel_NW = NW, rel_NE = NE;
       int rel_rank = rank;
       if (turn == Black) {
@@ -52,13 +53,14 @@ vector<Move> Board::generate_pseudo_moves() {
         } else
           pseudo.push_back(Move(s, s + rel_NE));
       }
-      if (rel_rank == 3)
+      if (rel_rank == 3) {
         if (s + rel_NW == enpassant_sq_idx)  // capture enpassant NW
-          pseudo.push_back(Move(s, s + rel_NW, '.', '.', true));
+          pseudo.push_back(Move(s, s + rel_NW, Empty, Empty, true));
         else if (s + rel_NE == enpassant_sq_idx)  // capture enpassant NE
-          pseudo.push_back(Move(s, s + rel_NE, '.', '.', true));
+          pseudo.push_back(Move(s, s + rel_NE, Empty, Empty, true));
+      }
     }
-    if (rel_piece == 'N') {
+    if (rel_piece == wN) {
       if (rank > 1) {
         if (isnt_A(s)) move_or_capture(pseudo, s, N + NW);  // UL
         if (isnt_H(s)) move_or_capture(pseudo, s, N + NE);  // UR
@@ -76,25 +78,24 @@ vector<Move> Board::generate_pseudo_moves() {
         if (isnt_H(s)) move_or_capture(pseudo, s, S + SE);  // DR
       }
     }
-    if (rel_piece == 'B' || rel_piece == 'Q')
-      slide(pseudo, s, {NW, NE, SW, SE});
-    if (rel_piece == 'R' || rel_piece == 'Q') slide(pseudo, s, {N, S, E, W});
+    if (rel_piece == wB || rel_piece == wQ) slide(pseudo, s, {NW, NE, SW, SE});
+    if (rel_piece == wR || rel_piece == wQ) slide(pseudo, s, {N, S, E, W});
   }
   // castling
   if (turn == White) {
     // kingside
     if (castling_rights[0] && empty(61) && empty(62))
-      pseudo.push_back(Move(60, 60 + E + E, '.', '.', false, true));
+      pseudo.push_back(Move(60, 60 + E + E, Empty, Empty, false, true));
     // queenside
     if (castling_rights[1] && empty(57) & empty(58) && empty(59))
-      pseudo.push_back(Move(60, 60 + W + W, '.', '.', false, true));
+      pseudo.push_back(Move(60, 60 + W + W, Empty, Empty, false, true));
   } else {
     // kingside
     if (castling_rights[2] && empty(5) && empty(6))
-      pseudo.push_back(Move(4, 4 + E + E, '.', '.', false, true));
+      pseudo.push_back(Move(4, 4 + E + E, Empty, Empty, false, true));
     // queenside
     if (castling_rights[3] && empty(1) && empty(2) && empty(3))
-      pseudo.push_back(Move(4, 4 + W + W, '.', '.', false, true));
+      pseudo.push_back(Move(4, 4 + W + W, Empty, Empty, false, true));
   }
   return pseudo;
 }
@@ -117,17 +118,17 @@ vector<Move> Board::generate_legal_moves() {
       bool threats[64] = {false};
       for (auto& x : temp.generate_pseudo_moves()) threats[x.to] = true;
       if (  // white kingside castling
-          move.from == 60 && move.to == 62 &&
-              (threats[60] || threats[61] || threats[62]) ||
+          (move.from == 60 && move.to == 62 &&
+           (threats[60] || threats[61] || threats[62])) ||
           // black queenside castling
-          move.from == 4 && move.to == 6 &&
-              (threats[4] || threats[5] || threats[6]) ||
+          (move.from == 4 && move.to == 6 &&
+           (threats[4] || threats[5] || threats[6])) ||
           // white kingside castling
-          move.from == 60 && move.to == 58 &&
-              (threats[60] || threats[59] || threats[58]) ||
+          (move.from == 60 && move.to == 58 &&
+           (threats[60] || threats[59] || threats[58])) ||
           // black queenside castling
-          move.from == 4 && move.to == 2 &&
-              (threats[4] || threats[3] || threats[2])) {
+          (move.from == 4 && move.to == 2 &&
+           (threats[4] || threats[3] || threats[2]))) {
         it = movelist.erase(it);
         deleted = true;
       }
@@ -175,8 +176,8 @@ vector<Move> Board::generate_legal_moves() {
       temp.unmake_move(move);
     }
     if (!deleted) {
-      (temp.board[move.to] != '.' || move.promotion != '.' || move.enpassant ||
-               move.castling
+      (temp.board[move.to] != Empty || move.promotion != Empty ||
+               move.enpassant || move.castling
            ? sorted_moves
            : others)
           .push_back(move);
@@ -276,8 +277,8 @@ bool Board::is_in_check(Player player) {
 Board Board::mark_threats() {
   Board temp = *this;
   temp.change_turn();
-  for (auto& move : temp.generate_pseudo_moves())
-    if (hostile(board[move.to], board[move.from])) temp.board[move.to] = 'x';
+  // for (auto& move : temp.generate_pseudo_moves())
+  //   if (hostile(board[move.to], board[move.from])) temp.board[move.to] = 'x';
   return temp;
 }
 
@@ -288,10 +289,11 @@ vector<string> Board::list_san(vector<Move> movelist) {
     char promotion = toupper(move.promotion);
     string san;
     if (move.castling) {
-      if (move.from == 4 && move.to == 6 || move.from == 60 && move.to == 62)
+      if ((move.from == 4 && move.to == 6) ||
+          (move.from == 60 && move.to == 62))
         san = "O-O";
-      else if (move.from == 4 && move.to == 2 ||
-               move.from == 60 && move.to == 58)
+      else if ((move.from == 4 && move.to == 2) ||
+               (move.from == 60 && move.to == 58))
         san = "O-O-O";
     } else {
       if (piece != 'P') san = piece;
@@ -312,7 +314,7 @@ vector<string> Board::list_san(vector<Move> movelist) {
       if (from_rank) san += idx2sq(move.from)[1];
       if (!empty(move.to) || move.enpassant) san += 'x';
       san += idx2sq(move.to);
-      if (move.promotion != '.') {
+      if (move.promotion != Empty) {
         san += '=';
         san += promotion;
       }

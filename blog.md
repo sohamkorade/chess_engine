@@ -153,3 +153,10 @@
 	- engine now avoids draws!
 - TODO: verify all of them, i guess i'm rushing into adding more and more features.
 - i've spent around one week on this commit, now it's time for me to focus on my academics :|
+
+## 18 Dec 2022
+
+### 2:40 am
+- planning to make a major change in the codebase: using `enum` instead of `char` for pieces. This is to
+	- elude branching in code
+	- improve the performance of the engine.

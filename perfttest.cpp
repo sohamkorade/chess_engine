@@ -27,7 +27,7 @@ int main(int argc, char* argv[]) {
     parts.push_back(line.substr(start, end - start));
     b.load_fen(parts[0]);
     cout << "fen: " << parts[0] << endl;
-    for (int i = 1; i < parts.size(); i++) {
+    for (size_t i = 1; i < parts.size(); i++) {
       cout << parts[i] << endl;
       int expected = stoi(parts[i].substr(parts[i].find(" ") + 1));
       cout << "               ";

@@ -5,7 +5,7 @@
 
 multiset<string> transpositions;
 
-int main(int argc, char* argv[]) {
+int test(int argc, char* argv[]) {
   // cout.setstate(ios_base::failbit);
   string filename = "bestmovetest.epd";
   if (argc > 1) filename = argv[1];
@@ -58,4 +58,15 @@ int main(int argc, char* argv[]) {
   cerr.clear();
   cout << "Total time taken: " << total << endl;
   return 0;
+}
+
+int main(int argc, char* argv[]) {
+  // return test(argc, argv);
+
+  Board b;
+  AI ai(b);
+  ai.set_clock(0, 0, 0, 0);
+  ai.max_depth = 3;
+  auto [bestmove, bestscore] = ai.search_best_move(transpositions);
+  cout << "bestmove " << b.to_uci(bestmove) << endl;
 }

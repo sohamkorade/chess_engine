@@ -29,10 +29,11 @@ void msg(string s) {
   gtk_statusbar_push(GTK_STATUSBAR(statusbar), 0, s.c_str());
 }
 
-void display_piece(int sq, char piece) {
+void display_piece(int sq, Piece piece) {
   gtk_widget_set_name(squares[sq], "");
   // if (piece != '.')
-  gtk_widget_set_name(squares[sq], string("piece_").append(1, piece).c_str());
+  gtk_widget_set_name(squares[sq],
+                      string("piece_").append(1, piece2char(piece)).c_str());
 }
 
 void generate_move_hints() {
@@ -171,7 +172,7 @@ void computer_move() {
   thinking = true;
   msg("Thinking...");
   gtk_progress_bar_pulse(GTK_PROGRESS_BAR(eval_bar));
-  if (!stop_thinking)
+  if (!stop_thinking) {
     if (gtk_check_button_get_active(GTK_CHECK_BUTTON(
             g.board.turn == White ? white_randommover : black_randommover))) {
       make_move(g.random_move());
@@ -183,6 +184,7 @@ void computer_move() {
       //                               abs(score) / 1e4);
       make_move(move);
     }
+  }
   thinking = false;
 }
 
@@ -222,7 +224,7 @@ void move_intent(int sq) {
   else if (valids.size() > 1) {  // move is a promotion
     prom_sq = valids.front().to;
     Direction d = prom_sq / 8 == 0 ? S : N;
-    for (int i = 0; i < valids.size(); i++) {
+    for (size_t i = 0; i < valids.size(); i++) {
       int temp_sq = prom_sq + d * i;
       if (board_flipped) temp_sq = 63 - temp_sq;
       promotions.insert({temp_sq, valids[i]});
