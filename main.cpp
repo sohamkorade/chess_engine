@@ -151,13 +151,10 @@ vector<string> split(string s, string delimiter) {
 
 void uci() {
   multiset<string> transpositions;
-  Board board1;
-  AI ai(board1);
-  auto& board = ai.board;
+  Board board;
+  AI ai(board);
   string cmd;
   vector<string> cmds;
-
-  int wtime = 60000, btime = 60000, winc = 0, binc = 0;
 
   while (getline(cin, cmd)) {
     cmds = split(cmd, " ");
@@ -197,10 +194,10 @@ void uci() {
         } else if (cmds[1] == "ponder") {
         } else if (cmds[1] == "wtime") {
           // example: go wtime 56329 btime 86370 winc 1000 binc 1000
-          wtime = stoi(cmds[2]);
-          btime = stoi(cmds[4]);
-          winc = stoi(cmds[6]);
-          binc = stoi(cmds[8]);
+          int wtime = stoi(cmds[2]);
+          int btime = stoi(cmds[4]);
+          int winc = stoi(cmds[6]);
+          int binc = stoi(cmds[8]);
           ai.set_clock(wtime, btime, winc, binc);
 
         } else if (cmds[1] == "btime") {
@@ -221,7 +218,7 @@ void uci() {
             transpositions.insert(board.pos_hash());
           }
         }
-      // AI ai(board);
+      ai.set_clock(60000, 60000, 0, 0);
       auto [bestmove, bestscore] = ai.search_best_move(transpositions);
       cout << "bestmove " << board.to_uci(bestmove) << endl;
     } else if (cmds[0] == "stop") {
@@ -263,7 +260,6 @@ void uci() {
       }
       board.load_startpos();
     } else if (cmds[0] == "eval") {
-      // AI ai(board);
       ai.print_eval();
     } else {
       cout << "Invalid command: " << cmd << endl;

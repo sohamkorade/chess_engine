@@ -5,10 +5,10 @@
 class Move {
  public:
   int from = 0, to = 0;
-  char promotion = '.', captured = '.';
-  bool enpassant = false, castling = false;
-  bool castling_rights[4] = {};
   int enpassant_sq_idx = -1, fifty = 0, moves = 0;
+  char promotion = '.', captured = '.';
+  bool castling_rights[4] = {};
+  bool enpassant = false, castling = false;
   Move(int _from = 0, int _to = 0, char _promotion = '.', char _captured = '.',
        bool _enpassant = false, bool _castling = false)
       : from(_from),
@@ -23,9 +23,9 @@ class Move {
 class Board {
  public:
   char board[64];
-  bool castling_rights[4] = {};
   int enpassant_sq_idx = -1, fifty = 0, moves = 1;
   int Kpos = -1, kpos = -1;
+  bool castling_rights[4] = {};
   Player turn = White;
 
   Board();

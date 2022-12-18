@@ -25,11 +25,14 @@ pair<Move, int> AI::search_best_move(multiset<string>& transpositions) {
   piece_val['b'] = -300;
   piece_val['n'] = -250;
   piece_val['p'] = -100;
+
+  auto movelist = get_best_moves();
+  cout << "info bestmoves: " << movelist.size() << endl;
+
   int bestscore = -1e8;
   Move bestmove;
+
   Board temp = board;
-  auto movelist = get_best_moves();
-  // auto movelist = monte_carlo();
   for (int i = 1; i >= 0; i--) {
     for (auto& m : movelist) {
       temp.make_move(m.second);
@@ -58,7 +61,7 @@ vector<pair<int, Move>> AI::get_best_moves() {
   //   log << "";
   //   log.close();
   // }
-  int time_taken = 0;
+  int time_taken = 0, time_taken_depth = 0;
   int max_time = (board.turn == White) ? (wtime + winc) : (btime + binc);
   // max_time /= 50 - board.moves;
   // max_time = 60000;
@@ -106,19 +109,26 @@ vector<pair<int, Move>> AI::get_best_moves() {
         break;
       }
     }
+
+    // no need to seach deeper if there's only one legal move
+    if (legalmoves.size() == 1) {
+      bestmoves.push_back(legalmoves.front());
+      break;
+    }
+
     for (auto& score_move : legalmoves) {
       // cout << "searching move: " << board.to_san(score_move.second)
       //      << " score: " << score_move.first << endl;
       // int realdepth = late_moves-- > 0 ? depth : depth - rand() % 2;
       int score, score2;
-      // if (!max_breadth--) break;
+
       board.make_move(score_move.second);
       auto t1 = chrono::high_resolution_clock::now();
       score = -alphabeta(depth, -1e6, +1e6);
-      // score2 = -negamax(depth);
       auto t2 = chrono::high_resolution_clock::now();
       auto diff = chrono::duration_cast<chrono::milliseconds>(t2 - t1).count();
       board.unmake_move(score_move.second);
+
       time_taken += diff;
       if (time_taken >= max_time && bestmoves.size() > 1) {
         for (auto& x : tempmoves) bestmoves.push_back(x);
@@ -129,9 +139,9 @@ vector<pair<int, Move>> AI::get_best_moves() {
       // log << board.to_san(move) << " = " << score << "\n\n";
       // log.close();}
       // cout << "info " << board.to_san(move) << " = " << score2 << endl;
-      cout << "info"
-           << " depth " << depth << " score cp " << score << " nodes 1 time "
-           << diff << " pv " << board.to_uci(score_move.second) << endl;
+      // cout << "info"
+      //      << " depth " << depth << " score cp " << score << " nodes 1 time "
+      //      << diff << " pv " << board.to_uci(score_move.second) << endl;
 
       // if (score > bestscore) {
       // bestscore = score;
@@ -139,7 +149,11 @@ vector<pair<int, Move>> AI::get_best_moves() {
       // }
       bestmoves.push_back({score, score_move.second});
     }
-    cout << "info time: " << time_taken << " depth: " << depth << endl;
+    cout << "info"
+         << " depth " << depth << " score cp " << bestmoves.front().first
+         << " nodes 1 time " << time_taken - time_taken_depth << " pv "
+         << board.to_uci(bestmoves.front().second) << endl;
+    time_taken_depth = time_taken;
   }
 
   // {
@@ -336,7 +350,7 @@ int AI::negamax(int depth) {
 int reduction(int depth, int moves) { return 1; }
 
 int AI::alphabeta(int depth, int alpha, int beta) {
-  while (g_main_context_pending(0)) g_main_context_iteration(0, 0);
+  // while (g_main_context_pending(0)) g_main_context_iteration(0, 0);
 
   bool is_in_check = board.is_in_check(board.turn);
   if (is_in_check) depth++;
@@ -345,7 +359,7 @@ int AI::alphabeta(int depth, int alpha, int beta) {
 
   auto legals = board.generate_legal_moves();
 
-  // if (legals.size() == 1) return 0;
+  if (legals.size() == 1) return 0;
 
   int moves = 0, late_moves = legals.size() / 2 + 1;
   int score;
@@ -380,7 +394,7 @@ int AI::alphabeta(int depth, int alpha, int beta) {
 }
 
 int AI::quiesce(int depth, int alpha, int beta) {
-  while (g_main_context_pending(0)) g_main_context_iteration(0, 0);
+  // while (g_main_context_pending(0)) g_main_context_iteration(0, 0);
 
   int pat = eval() * board.turn;
   if (pat >= beta) return beta;
