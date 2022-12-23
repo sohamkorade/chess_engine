@@ -310,20 +310,6 @@ void Board::load_startpos() {
 
 bool Board::empty(int idx) { return board[idx] == Empty; }
 
-void Board::slide(vector<Move>& movelist, int sq, vector<Direction> dirs) {
-  for (auto& dir : dirs) {
-    if (westwards(dir) && !isnt_A(sq)) continue;
-    if (eastwards(dir) && !isnt_H(sq)) continue;
-    for (int dest = sq + dir;
-         in_board(dest) && !friendly(board[sq], board[dest]); dest += dir) {
-      movelist.push_back(Move(sq, dest));
-      if (hostile(board[sq], board[dest])) break;
-      if (westwards(dir) && !isnt_A(dest)) break;
-      if (eastwards(dir) && !isnt_H(dest)) break;
-    }
-  }
-}
-
 // Move Board::match_san(vector<Move> movelist, string san) {
 //   // TODO
 //   // int count = 0;
@@ -335,11 +321,6 @@ void Board::slide(vector<Move>& movelist, int sq, vector<Direction> dirs) {
 //   //     ;
 //   // }
 // }
-
-void Board::move_or_capture(vector<Move>& movelist, int sq, int dir) {
-  if (!friendly(board[sq], board[sq + dir]))
-    movelist.push_back(Move(sq, sq + dir));
-}
 
 string Board::pos_hash() {
   string fen = "";

@@ -49,7 +49,10 @@ void test_navigation() {
       temp.movelist = g.board.generate_legal_moves();
       temp.print_movelist();
     } else if (cmd == "threats") {
-      g.board.mark_threats().print();
+      Board temp = g.board;
+      auto threats = g.board.get_threats();
+      for (int i = 0; i < 64; i++) temp.board[i] = (threats[i] ? wP : Empty);
+      temp.print();
     } else if (cmd == "move" || cmd == "m") {
       cin >> cmd;
       bool valid = false;

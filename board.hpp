@@ -45,7 +45,7 @@ class Board {
   bool empty(int idx);
   vector<Move> generate_pseudo_moves();
   vector<Move> generate_legal_moves();
-  Board mark_threats();
+  array<bool, 64> get_threats();
   // Move match_san(vector<Move> movelist, string san);
   vector<string> list_san(vector<Move> movelist);
   int divide(int depth);
@@ -59,6 +59,11 @@ class Board {
  protected:
   void slide(vector<Move>& movelist, int sq, vector<Direction> dirs);
   void move_or_capture(vector<Move>& movelist, int sq, int dir);
+
+  void generate_pawn_moves(vector<Move>& pseudo, int sq);
+  void generate_knight_moves(vector<Move>& pseudo, int sq);
+  void generate_king_moves(vector<Move>& pseudo, int sq);
+  void generate_castling_moves(vector<Move>& pseudo);
 };
 
 int sq2idx(char file, char rank);
