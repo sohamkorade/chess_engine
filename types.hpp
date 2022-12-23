@@ -39,3 +39,12 @@ enum Piece {
   bQ = -5,
   bK = -6
 };
+
+enum SearchType {
+  Infinite,
+  Fixed_depth,
+  Time_per_move,
+  Time_per_game,
+  Ponder,
+  Mate
+};

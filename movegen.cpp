@@ -2,9 +2,10 @@
 
 vector<Move> Board::generate_pseudo_moves() {
   vector<Move> pseudo;
+  pseudo.reserve(40);  // average number of pseudo moves per position
   Piece promotions[4] = {wQ, wR, wB, wN};
   Piece black_promotions[4] = {bQ, bR, bB, bN};
-  copy_n(black_promotions, 4, promotions);
+  if (turn == Black) copy_n(black_promotions, 4, promotions);
   for (int s = 0; s < 64; s++) {
     Piece piece = board[s];
     if (hostile(piece, turn == Black ? bK : wK))
@@ -103,9 +104,11 @@ vector<Move> Board::generate_pseudo_moves() {
 vector<Move> Board::generate_legal_moves() {
   auto movelist = generate_pseudo_moves();
   vector<Move> sorted_moves, others;
+  sorted_moves.reserve(movelist.size());
+  others.reserve(movelist.size());
+
   Board temp = *this;
 
-  // int K_pos = board.find(turn == White ? 'K' : 'k');
   int K_pos = turn == White ? Kpos : kpos;
 
   for (auto it = movelist.begin(); it != movelist.end();) {
@@ -132,39 +135,7 @@ vector<Move> Board::generate_legal_moves() {
         it = movelist.erase(it);
         deleted = true;
       }
-      // set<int> threats;
-      // for (auto& x : temp.generate_pseudo_moves()) threats.insert(x.to);
-      // if (  // white kingside castling
-      //     move.from == 60 && move.to == 62 &&
-      //         (threats.count(60) || threats.count(61) || threats.count(62))
-      //         ||
-      //     // black queenside castling
-      //     move.from == 4 && move.to == 6 &&
-      //         (threats.count(4) || threats.count(5) || threats.count(6)) ||
-      //     // white kingside castling
-      //     move.from == 60 && move.to == 58 &&
-      //         (threats.count(60) || threats.count(59) || threats.count(58))
-      //         ||
-      //     // black queenside castling
-      //     move.from == 4 && move.to == 2 &&
-      //         (threats.count(4) || threats.count(3) || threats.count(2))) {
-      //   it = movelist.erase(it);
-      //   deleted = true;
-      // }
       temp.change_turn();
-      // bool deleted = false;
-      // for (int i = move.from;; i += (i < move.to) - (i > move.to)) {
-      //   auto temp_move = Move(move.from, i);
-      //   i == move.from ? temp.change_turn() : temp.make_move(temp_move);
-      //   for (auto& x : temp.generate_pseudo_moves())
-      //     if (x.to == i) {
-      //       it = movelist.erase(it);
-      //       deleted = true;
-      //       break;
-      //     }
-      //   i == move.from ? temp.change_turn() : temp.unmake_move(temp_move);
-      //   if (i == move.to || deleted) break;
-      // }
     } else {
       temp.make_move(move);
       for (auto& x : temp.generate_pseudo_moves())
@@ -285,8 +256,8 @@ Board Board::mark_threats() {
 vector<string> Board::list_san(vector<Move> movelist) {
   vector<string> temp;
   for (auto& move : movelist) {
-    char piece = toupper(board[move.from]);
-    char promotion = toupper(move.promotion);
+    char piece = toupper(piece2char(board[move.from]));
+    char promotion = toupper(piece2char(move.promotion));
     string san;
     if (move.castling) {
       if ((move.from == 4 && move.to == 6) ||
@@ -314,7 +285,7 @@ vector<string> Board::list_san(vector<Move> movelist) {
       if (from_rank) san += idx2sq(move.from)[1];
       if (!empty(move.to) || move.enpassant) san += 'x';
       san += idx2sq(move.to);
-      if (move.promotion != Empty) {
+      if (move.promotion != '.') {
         san += '=';
         san += promotion;
       }

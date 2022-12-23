@@ -29,12 +29,12 @@ class Board {
   Player turn = White;
 
   Board();
-  Piece operator[](int i) const;
+  constexpr Piece operator[](int i);
   int piece_color(int sq_idx);
   int sq_color(int sq_idx);
   void print(string sq = "", bool flipped = false);
   void change_turn();
-  void make_move(string move);
+  bool make_move(string move);
   void make_move(Move& move);
   void unmake_move(Move& move);
   bool load_fen(string fen);
@@ -42,7 +42,7 @@ class Board {
   string to_uci(Move move);
   string to_san(Move move);
   void load_startpos();
-  bool empty(int idx) const;
+  bool empty(int idx);
   vector<Move> generate_pseudo_moves();
   vector<Move> generate_legal_moves();
   Board mark_threats();
@@ -63,16 +63,22 @@ class Board {
 
 int sq2idx(char file, char rank);
 string idx2sq(int idx);
-bool friendly(Piece a, Piece b);
-bool hostile(Piece a, Piece b);
-bool in_board(int idx);
-bool isnt_H(int idx);
-bool isnt_A(int idx);
-bool isnt_8(int idx);
-bool isnt_1(int idx);
 
-bool westwards(Direction dir);
-bool eastwards(Direction dir);
+inline bool friendly(Piece a, Piece b) { return a * b > 0; }
+inline bool hostile(Piece a, Piece b) { return a * b < 0; }
+inline bool in_board(int idx) { return idx >= 0 && idx < 64; }
+
+inline bool isnt_H(int idx) { return idx % 8 != 7; }
+inline bool isnt_A(int idx) { return idx % 8 != 0; }
+inline bool isnt_8(int idx) { return idx / 8 != 0; }
+inline bool isnt_1(int idx) { return idx / 8 != 7; }
+
+inline bool westwards(Direction dir) {
+  return dir == NW || dir == SW || dir == W;
+}
+inline bool eastwards(Direction dir) {
+  return dir == NE || dir == SE || dir == E;
+}
 
 Piece char2piece(char p);
 char piece2char(Piece p);

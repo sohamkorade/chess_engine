@@ -10,33 +10,7 @@ string idx2sq(int idx) {
   return sq.append(1, (7 - idx / 8) + '1');
 }
 
-bool friendly(Piece a, Piece b) { return a * b > 0; }
-
-bool hostile(Piece a, Piece b) { return a * b < 0; }
-
-bool in_board(int idx) { return idx >= 0 && idx < 64; }
-bool isnt_H(int idx) { return idx % 8 != 7; }
-bool isnt_A(int idx) { return idx % 8 != 0; }
-bool isnt_8(int idx) { return idx / 8 != 0; }
-bool isnt_1(int idx) { return idx / 8 != 7; }
-
-bool westwards(Direction dir) { return dir == NW || dir == SW || dir == W; }
-bool eastwards(Direction dir) { return dir == NE || dir == SE || dir == E; }
-
 Piece char2piece(char p) {
-  // if (p == '.') return Empty;
-  // if (p == 'p') return bP;
-  // if (p == 'n') return bN;
-  // if (p == 'b') return bB;
-  // if (p == 'r') return bR;
-  // if (p == 'q') return bQ;
-  // if (p == 'k') return bK;
-  // if (p == 'P') return wP;
-  // if (p == 'N') return wN;
-  // if (p == 'B') return wB;
-  // if (p == 'R') return wR;
-  // if (p == 'Q') return wQ;
-  // if (p == 'K') return wK;
   size_t pos = string("kqrbnp.PNBRQK").find(p);
   if (pos != string::npos) return static_cast<Piece>(pos - 6);
   return Empty;
@@ -44,7 +18,7 @@ Piece char2piece(char p) {
 
 char piece2char(Piece p) { return "kqrbnp.PNBRQK"[p + 6]; }
 
-void Board::make_move(string move) {
+bool Board::make_move(string move) {
   Move temp;
   int l = move.length();
   if (l == 4 || l == 5) {
@@ -56,8 +30,10 @@ void Board::make_move(string move) {
     temp.castling = (temp.from == Kpos && (move == "e1g1" || move == "e1c1")) ||
                     (temp.from == kpos && (move == "e8g8" || move == "e8c8"));
     temp.enpassant = abs(board[temp.from]) == wP && enpassant_sq_idx == temp.to;
+    make_move(temp);
+    return true;
   }
-  make_move(temp);
+  return false;
 }
 
 void Move::print() {
@@ -68,7 +44,7 @@ void Move::print() {
 
 Board::Board() { load_startpos(); }
 
-Piece Board::operator[](int i) const { return board[i]; }
+constexpr Piece Board::operator[](int i) { return board[i]; }
 
 int Board::piece_color(int sq_idx) { return isupper(board[sq_idx]) ? 1 : -1; }
 int Board::sq_color(int sq_idx) {
@@ -220,7 +196,7 @@ bool Board::load_fen(string fen) {
   fill_n(board, 64, Empty);
   int part = 0, p = 0;
   char enpassant_sq[2];
-  enpassant_sq_idx = 0, fifty = 0, moves = 0;
+  enpassant_sq_idx = fifty = moves = 0;
   fill_n(castling_rights, 4, false);
 
   for (auto& x : fen) {
@@ -257,13 +233,11 @@ bool Board::load_fen(string fen) {
   }
   if (~enpassant_sq_idx)
     enpassant_sq_idx = sq2idx(enpassant_sq[0], enpassant_sq[1]);
-  Kpos = distance(board, find(board, board + 64, wK));
-  kpos = distance(board, find(board, board + 64, bK));
-  // for (int i = 0; i < 64; i++)
-  //   if (board[i] == 'K')
-  //     Kpos = i;
-  //   else if (board[i] == 'k')
-  //     kpos = i;
+  for (int i = 0; i < 64; i++)
+    if (board[i] == wK)
+      Kpos = i;
+    else if (board[i] == bK)
+      kpos = i;
   if (Kpos == 64 || kpos == 64) return false;
   return part > 1;
 }
@@ -334,7 +308,7 @@ void Board::load_startpos() {
   load_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
 }
 
-bool Board::empty(int idx) const { return board[idx] == Empty; }
+bool Board::empty(int idx) { return board[idx] == Empty; }
 
 void Board::slide(vector<Move>& movelist, int sq, vector<Direction> dirs) {
   for (auto& dir : dirs) {

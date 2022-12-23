@@ -1,3 +1,6 @@
+#include <sstream>
+#include <thread>
+
 #include "ai.hpp"
 #include "board.hpp"
 #include "game.hpp"
@@ -134,137 +137,142 @@ void test_navigation() {
   }
 }
 
-vector<string> split(string s, string delimiter) {
-  size_t pos_start = 0, pos_end, delim_len = delimiter.length();
-  string token;
-  vector<string> res;
-
-  while ((pos_end = s.find(delimiter, pos_start)) != string::npos) {
-    token = s.substr(pos_start, pos_end - pos_start);
-    pos_start = pos_end + delim_len;
-    res.push_back(token);
-  }
-
-  res.push_back(s.substr(pos_start));
-  return res;
-}
-
 void uci() {
   multiset<string> transpositions;
-  Board board;
-  AI ai(board);
-  string cmd;
-  vector<string> cmds;
+  Board board1;
+  AI ai(board1);
+  auto& board = ai.board;
+  string line, token;
 
-  while (getline(cin, cmd)) {
-    cmds = split(cmd, " ");
-    int n = cmds.size() - 1;
-    if (cmds[0] == "uci") {
+  while (getline(cin, line)) {
+    istringstream iss(line);
+    iss >> token;
+    if (token == "uci") {
       cout << "id name Chess by Soham" << endl;
       cout << "id author Soham Korade" << endl;
       cout << "uciok" << endl;
-    } else if (cmds[0] == "ucinewgame") {
-    } else if (cmds[0] == "position") {
+    } else if (token == "ucinewgame") {
+    } else if (token == "position") {
+      iss >> token;
       transpositions.clear();
-      if (n >= 1) {
-        if (cmds[1] == "fen") {
-          string fen;
-          for (int i = 2; i < 2 + 6; i++) fen += cmds[i] + " ";
-          // cout << "--\n{" << fen << "}\n--\n";
-          board.load_fen(fen);
-          if (n >= 8 && cmds[8] == "moves") {
-            for (int i = 9; i < n + 1; i++) {
-              board.make_move(cmds[i]);
-              transpositions.insert(board.pos_hash());
-            }
-          }
-        } else if (cmds[1] == "startpos") {
-          transpositions.clear();
-          board.load_startpos();
-          if (n >= 2 && cmds[2] == "moves") {
-            for (int i = 3; i < n + 1; i++) {
-              board.make_move(cmds[i]);
-              transpositions.insert(board.pos_hash());
-            }
-          }
+      if (token == "fen") {
+        string fen;
+        for (int i = 0; i < 6; i++) {
+          if (iss >> token && token != "moves")
+            fen += token + " ";
+          else
+            break;
         }
+        // cout << "--\n{" << fen << "}\n--\n";
+        board.load_fen(fen);
+      } else if (token == "startpos") {
+        transpositions.clear();
+        board.load_startpos();
+        iss >> token;
       }
-    } else if (cmds[0] == "go") {
-      if (n >= 2) {
-        if (cmds[1] == "searchmoves") {
-        } else if (cmds[1] == "ponder") {
-        } else if (cmds[1] == "wtime") {
-          // example: go wtime 56329 btime 86370 winc 1000 binc 1000
-          int wtime = stoi(cmds[2]);
-          int btime = stoi(cmds[4]);
-          int winc = stoi(cmds[6]);
-          int binc = stoi(cmds[8]);
-          ai.set_clock(wtime, btime, winc, binc);
-
-        } else if (cmds[1] == "btime") {
-        } else if (cmds[1] == "winc") {
-        } else if (cmds[1] == "binc") {
-        } else if (cmds[1] == "movestogo") {
-        } else if (cmds[1] == "depth") {
-        } else if (cmds[1] == "nodes") {
-        } else if (cmds[1] == "mate") {
-        } else if (cmds[1] == "movetime") {
-        } else if (cmds[1] == "infinite") {
-        } else if (cmds[1] == "startpos") {
-          transpositions.clear();
-          board.load_startpos();
-          for (int i = 2; i < n + 1; i++) {
-            if (cmds[i] == "nodes") break;
-            board.make_move(cmds[i]);
+      if (token == "moves") {
+        while (iss >> token) {
+          if (board.make_move(token))
             transpositions.insert(board.pos_hash());
+          else
+            break;
+        }
+      }
+    } else if (token == "go") {
+      // example: go wtime 56329 btime 86370 winc 1000 binc 1000
+      ai.search_type = Time_per_game;
+      ai.set_clock(30000, 30000, 0, 0);
+      ai.max_depth = 100;
+      while (iss >> token) {
+        if (token == "searchmoves") {
+        } else if (token == "ponder") {
+          ai.search_type = Ponder;
+        } else if (token == "wtime") {
+          iss >> ai.wtime;
+        } else if (token == "btime") {
+          iss >> ai.btime;
+        } else if (token == "winc") {
+          iss >> ai.winc;
+        } else if (token == "binc") {
+          iss >> ai.binc;
+        } else if (token == "movestogo") {
+        } else if (token == "depth") {
+          iss >> ai.max_depth;
+          ai.search_type = Fixed_depth;
+        } else if (token == "nodes") {
+        } else if (token == "mate") {
+          ai.search_type = Mate;
+        } else if (token == "movetime") {
+          iss >> ai.mtime;
+          ai.search_type = Time_per_move;
+        } else if (token == "infinite") {
+          ai.search_type = Infinite;
+        } else if (token == "startpos") {
+          transpositions.clear();
+          board.load_startpos();
+          iss >> token;
+          if (token == "moves") {
+            while (iss >> token) {
+              if (board.make_move(token))
+                transpositions.insert(board.pos_hash());
+              else
+                break;
+            }
           }
         }
       }
-      ai.set_clock(60000, 60000, 0, 0);
-      auto [bestmove, bestscore] = ai.search_best_move(transpositions);
+      cout << "timings: " << ai.wtime << " " << ai.btime << " " << ai.winc
+           << " " << ai.binc << endl;
+      auto [bestmove, bestscore] = ai.search(transpositions);
       cout << "bestmove " << board.to_uci(bestmove) << endl;
-    } else if (cmds[0] == "stop") {
-    } else if (cmds[0] == "ponderhit") {
-    } else if (cmds[0] == "debug") {
-      debug_mode = cmds[1] == "on";
-    } else if (cmds[0] == "isready") {
+    } else if (token == "stop") {
+    } else if (token == "ponderhit") {
+    } else if (token == "debug") {
+      iss >> token;
+      debug_mode = token == "on";
+    } else if (token == "isready") {
       cout << "readyok" << endl;
-    } else if (cmds[0] == "setoption") {
-    } else if (cmds[0] == "register") {
-    } else if (cmds[0] == "d") {
+    } else if (token == "setoption") {
+    } else if (token == "register") {
+    } else if (token == "d") {
       board.print();
       cout << "fen: " << board.to_fen() << endl;
-    } else if (cmds[0] == "quit") {
+    } else if (token == "quit") {
       break;
 
       // additional commands
-    } else if (cmds[0] == "pseudo") {
+    } else if (token == "pseudo") {
       Game temp;
       temp.board = board;
       temp.movelist = board.generate_pseudo_moves();
       temp.print_movelist();
-    } else if (cmds[0] == "legal") {
+    } else if (token == "legal") {
       Game temp;
       temp.board = board;
       temp.movelist = board.generate_legal_moves();
       temp.print_movelist();
-    } else if (cmds[0] == "lichess") {
+    } else if (token == "lichess") {
       string fen = board.to_fen();
       replace(fen.begin(), fen.end(), ' ', '_');
       cout << "https://lichess.org/analysis/" << fen << endl;
-    } else if (cmds[0] == "perft" || cmds[0] == "divide") {
-      board.divide(stoi(cmds[1]));
-    } else if (cmds[0] == "debugmoves") {
-      for (int i = 1; i < n + 1; i++) {
-        board.make_move(cmds[i]);
-        board.print();
-        cout << "fen: " << board.to_fen() << endl;
+    } else if (token == "perft" || token == "divide") {
+      int depth;
+      iss >> depth;
+      board.divide(depth);
+    } else if (token == "debugmoves") {
+      while (iss >> token) {
+        if (board.make_move(token)) {
+          board.print();
+          cout << "fen: " << board.to_fen() << endl;
+        } else {
+          break;
+        }
       }
       board.load_startpos();
-    } else if (cmds[0] == "eval") {
+    } else if (token == "eval") {
       ai.print_eval();
     } else {
-      cout << "Invalid command: " << cmd << endl;
+      cout << "Invalid command: " << line << endl;
     }
   }
 }
