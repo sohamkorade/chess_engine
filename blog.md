@@ -157,6 +157,33 @@
 ## 18 Dec 2022
 
 ### 2:40 am
-- planning to make a major change in the codebase: using `enum` instead of `char` for pieces. This is to
-	- elude branching in code
-	- improve the performance of the engine.
+- planning to make a major change in the codebase: using `enum` instead of `char` for pieces. This is to elude branching in code?
+- added best move tester
+- solved a small bug in move generation
+
+### 5 am
+- completed the change to `enum` for pieces
+- maybe the engine is now faster? (because we can now access piece-square tables directly using index without branching)
+
+
+## 24 Dec 2022
+
+### 1:30 am
+- better `uci` handling, using `istringstream` to parse commands
+- better Mate Score output
+- added Mate in 2, 3, and 4 tests (and they pass! but slow)
+- inlined some functions (maybe faster now?)
+- added Search Type: `Infinite`, `Fixed Depth`, `Time per Move`, `Time per Game`, `Ponder` and `Mate`. Not all of them are working yet :')
+
+### 3 am
+- `movelist.reserve(40)`: doing this made move generation ~1.5x faster! Now reserving in all vectors.
+- modularized move generation
+- added `get_threats` function
+
+## 25 Dec 2022
+
+### 1 am
+- wrote README
+- plans:
+	- find a way to make `movelist` faster
+	- make move generation faster, I think checking for checks is the bottleneck.

@@ -32,13 +32,12 @@ pair<Move, int> AI::search(multiset<string>& transpositions) {
   int bestscore = -1e8;
   Move bestmove;
 
-  Board temp = board;
   auto movelist = iterative_search();
   for (int i = 1; i >= 0; i--) {
     for (auto& m : movelist) {
-      temp.make_move(m.second);
-      int tp = transpositions.count(temp.pos_hash());
-      temp.unmake_move(m.second);
+      board.make_move(m.second);
+      int tp = transpositions.count(board.pos_hash());
+      board.unmake_move(m.second);
       if (tp > i) continue;
       if (m.first > bestscore) {
         bestscore = m.first;

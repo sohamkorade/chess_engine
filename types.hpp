@@ -22,7 +22,7 @@ enum Direction {
   SW = +7
 };
 enum Player { White = 1, Black = -1 };
-enum Status { Undecided, White_wins, Black_wins, Draw };
+enum Status { Undecided, WhiteWins, BlackWins, Draw };
 
 enum Piece {
   Empty = 0,
@@ -48,3 +48,5 @@ enum SearchType {
   Ponder,
   Mate
 };
+
+enum CheckType { CheckNotChecked = 0, WhiteChecked = 1, BlackChecked = -1 };

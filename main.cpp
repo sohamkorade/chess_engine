@@ -259,9 +259,8 @@ void uci() {
       replace(fen.begin(), fen.end(), ' ', '_');
       cout << "https://lichess.org/analysis/" << fen << endl;
     } else if (token == "perft" || token == "divide") {
-      int depth;
-      iss >> depth;
-      board.divide(depth);
+      iss >> token;
+      board.divide(stoi(token));
     } else if (token == "debugmoves") {
       while (iss >> token) {
         if (board.make_move(token)) {

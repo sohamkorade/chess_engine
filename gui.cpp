@@ -106,9 +106,9 @@ void update_board() {
 string get_result_str(Status result) {
   if (result == Draw)
     return "½-½";
-  else if (result == White_wins)
+  else if (result == WhiteWins)
     return "1-0";
-  else if (result == Black_wins)
+  else if (result == BlackWins)
     return "0-1";
   return "*";
 }

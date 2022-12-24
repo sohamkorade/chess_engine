@@ -211,7 +211,7 @@ int Board::divide(int depth) {
     // Board after = *this;
     int nodes = perft(depth - 1, 0);
     unmake_move(move);
-    // if (before.board != this->board) {
+    // if (before.to_fen() != this->to_fen()) {
     //   cerr << "! "
     //        << "undo failed" << endl;
     //   cerr << "move: ";
@@ -238,6 +238,8 @@ bool Board::is_in_threat(int sq) {
 }
 
 bool Board::is_in_check(Player player) {
+  // if (check) return player == check;
+  // CheckType check = CheckNotChecked;
   int K_pos = player == White ? Kpos : kpos;
   bool check = false;
   if (turn == player) {

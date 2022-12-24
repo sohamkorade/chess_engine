@@ -27,6 +27,7 @@ class Board {
   int Kpos = -1, kpos = -1;
   bool castling_rights[4] = {};
   Player turn = White;
+  // CheckType check = CheckNotChecked;
 
   Board();
   constexpr Piece operator[](int i);

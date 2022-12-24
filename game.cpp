@@ -81,7 +81,7 @@ Status Game::get_result() {
   bool can_move = board.generate_legal_moves().size();
   if (!can_move) {
     if (board.is_in_check(board.turn))
-      return board.turn == White ? Black_wins : White_wins;
+      return board.turn == White ? BlackWins : WhiteWins;
     else
       return Draw;
   }
