@@ -29,10 +29,12 @@ void AI::set_clock(int _wtime, int _btime, int _winc, int _binc) {
 }
 
 pair<Move, int> AI::search(multiset<string>& transpositions) {
+  searching = true;
+  auto movelist = iterative_search();
+  searching = false;
+
   int bestscore = -1e8;
   Move bestmove;
-
-  auto movelist = iterative_search();
   for (int i = 1; i >= 0; i--) {
     for (auto& m : movelist) {
       board.make_move(m.second);
@@ -48,6 +50,7 @@ pair<Move, int> AI::search(multiset<string>& transpositions) {
   }
   cout << "info bestmove: " << bestscore << " = " << board.to_san(bestmove)
        << " out of " << movelist.size() << endl;
+  cout << "bestmove " << board.to_uci(bestmove) << endl;
   return {bestmove, bestscore};
 }
 
@@ -101,22 +104,24 @@ vector<pair<int, Move>> AI::iterative_search() {
 
   // iterative deepening
   int depth = 1;
-  for (; time_taken * 2 < max_search_time && depth <= max_depth; depth++) {
+  for (; searching && time_taken * 2 < max_search_time && depth <= max_depth;
+       depth++) {
     tempmoves = bestmoves;
     bestmoves.clear();
 
-    // no need to seach deeper if there's only one legal move
-    if (search_type != Mate)
+    if (search_type != Mate && search_type != Infinite) {
+      // no need to seach deeper if there's only one legal move
       if (legalmoves.size() == 1) {
         bestmoves.push_back(legalmoves.front());
         break;
       }
 
-    // mate found so prune non-mating moves (TODO: verify)
-    if (get_mate_score(legalmoves.front().first) > 0) {
-      for (auto& move : legalmoves)
-        if (get_mate_score((move.first)) > 0) bestmoves.push_back(move);
-      break;
+      // mate found so prune non-mating moves (TODO: verify)
+      if (get_mate_score(legalmoves.front().first) > 0) {
+        for (auto& move : legalmoves)
+          if (get_mate_score((move.first)) > 0) bestmoves.push_back(move);
+        break;
+      }
     }
 
     if (get_mate_score(legalmoves.back().first) < 0) {
@@ -130,7 +135,7 @@ vector<pair<int, Move>> AI::iterative_search() {
       } else {
         // best and worst move is losing, so no point in searching deeper
         for (auto& move : legalmoves) bestmoves.push_back(move);
-        break;
+        if (search_type != Mate && search_type != Infinite) break;
       }
     }
 
@@ -140,21 +145,31 @@ vector<pair<int, Move>> AI::iterative_search() {
       // cout << "searching move: " << board.to_san(score_move.second)
       //      << " score: " << score_move.first << endl;
 
-      board.make_move(score_move.second);
       auto t1 = chrono::high_resolution_clock::now();
-      int score = -alphabeta(depth, mate_score, +MateScore);
+      board.make_move(score_move.second);
+      // // check TT
+      // auto key = board.pos_hash();
+      // auto& entry = TT[key];
+      int score = 0;
+      // if (entry.depth >= depth) {
+      //   score = entry.score;
+      // } else {
+      score = -alphabeta(depth, mate_score, +MateScore);
       // int score2 = -negamax(depth);
+      //   // store in TT
+      //   entry = {depth, score, board.moves, Exact, score_move.second};
+      // }
+      board.unmake_move(score_move.second);
       auto t2 = chrono::high_resolution_clock::now();
       auto diff = chrono::duration_cast<chrono::milliseconds>(t2 - t1).count();
-      board.unmake_move(score_move.second);
-
       time_taken += diff;
 
-      // break if time is up
-      if (time_taken >= max_search_time && bestmoves.size() > 1) {
-        for (auto& x : tempmoves) bestmoves.push_back(x);
-        break;
-      }
+      // break if time is up, but ensure we have atleast one move
+      if (!searching || time_taken >= max_search_time)
+        if (bestmoves.size() > 1) {
+          for (auto& x : tempmoves) bestmoves.push_back(x);
+          break;
+        }
       score_move.first = score;
 
       if (get_mate_score(score) > 0) mate_score = score;
@@ -163,11 +178,11 @@ vector<pair<int, Move>> AI::iterative_search() {
       // log << board.to_san(move) << " = " << score << "\n\n";
       // log.close();}
       // cout << "info " << board.to_san(move) << " = " << score2 << endl;
-      cout << "info depth " << depth;
-      print_score(score);
-      // print_score(score2);
-      cout << " nodes 1 time " << diff << " pv "
-           << board.to_uci(score_move.second) << endl;
+      // cout << "info searching depth " << depth;
+      // print_score(score);
+      // // print_score(score2);
+      // cout << " time " << diff << " pv " << board.to_uci(score_move.second)
+      //      << endl;
 
       // if (score > bestscore) {
       // bestscore = score;
@@ -180,9 +195,9 @@ vector<pair<int, Move>> AI::iterative_search() {
     sort(legalmoves.begin(), legalmoves.end(),
          [](auto& a, auto& b) { return a.first > b.first; });
 
-    cout << "info searched depth " << depth;
+    cout << "info depth " << depth;
     print_score(bestmoves.front().first);
-    cout << " time " << time_taken - time_taken_depth << " best "
+    cout << " time " << time_taken - time_taken_depth << " pv "
          << board.to_uci(bestmoves.front().second) << endl;
     time_taken_depth = time_taken;
   }
@@ -321,6 +336,13 @@ int AI::alphabeta(int depth, int alpha, int beta) {
 
   for (auto& move : legals) {
     board.make_move(move);
+    // // check in TT
+    // auto key = board.pos_hash();
+    // auto& entry = TT[key];
+    // int score = 0;
+    // if (entry.depth >= depth) {
+    //   score = entry.score;
+    // } else {
     // late move reduction
     if (moves < late_moves) {
       score = -alphabeta(depth + extra_depth - 1, -beta, -alpha);
@@ -330,6 +352,9 @@ int AI::alphabeta(int depth, int alpha, int beta) {
       if (score >= alpha)
         score = -alphabeta(depth + extra_depth - 1, -beta, -alpha);
     }
+    //   // store in TT
+    //   entry = {depth, score, board.moves, Exact, move};
+    // }
     board.unmake_move(move);
     if (score >= beta) return score;
     alpha = max(alpha, score);
@@ -370,4 +395,13 @@ int AI::quiesce(int depth, int alpha, int beta) {
     return board.is_in_check(board.turn) ? -MateScore + depth : 0;
 
   return alpha;
+}
+
+void AI::prune_TT(int age) {
+  for (auto it = TT.begin(); it != TT.end();) {
+    if (it->second.depth < age)
+      it = TT.erase(it);
+    else
+      it++;
+  }
 }

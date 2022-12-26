@@ -50,3 +50,5 @@ enum SearchType {
 };
 
 enum CheckType { CheckNotChecked = 0, WhiteChecked = 1, BlackChecked = -1 };
+
+enum EvalType { Exact, LowerBound, UpperBound };

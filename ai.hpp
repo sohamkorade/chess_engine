@@ -2,8 +2,18 @@
 
 #include <gtk/gtk.h>
 
+#include <atomic>
+
 #include "board.hpp"
 #include "types.hpp"
+
+struct TTEntry {  // transposition table entry
+  int age;
+  int depth = 0;
+  int score;
+  EvalType eval_type;
+  Move best_move;
+};
 
 class AI {
  public:
@@ -12,6 +22,9 @@ class AI {
   int mtime = 1000;  // move time
   int max_depth = 100;
   SearchType search_type = Time_per_game;
+  map<string, TTEntry> TT;  // transposition table
+  vector<Move> PV;          // principal variation
+  atomic<bool> searching{false};
 
   string debug = "";
 
@@ -19,6 +32,7 @@ class AI {
   pair<Move, int> search(multiset<string> &transpositions);
   void set_clock(int _wtime, int _btime, int _winc, int _binc);
   int print_eval();
+  void prune_TT(int age);  // prune TT entries older than age
 
  protected:
   int eval();

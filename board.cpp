@@ -244,6 +244,7 @@ bool Board::load_fen(string fen) {
 
 string Board::to_fen() {
   string fen = "";
+  fen.reserve(100);
   int blanks = 0;
   for (int i = 0; i < 64; i++) {
     if (board[i] == Empty) blanks++;
@@ -324,15 +325,16 @@ bool Board::empty(int idx) { return board[idx] == Empty; }
 
 string Board::pos_hash() {
   string fen = "";
+  fen.reserve(100);
   for (auto& s : board) fen += piece2char(s);
-  fen += "|";
-  fen += (turn == White ? "w" : "b");
-  fen += "|";
-  if (castling_rights[0]) fen += "K";
-  if (castling_rights[1]) fen += "Q";
-  if (castling_rights[2]) fen += "k";
-  if (castling_rights[3]) fen += "q";
-  fen += "|";
+  fen += '|';
+  fen += (turn == White ? 'w' : 'b');
+  fen += '|';
+  if (castling_rights[0]) fen += 'K';
+  if (castling_rights[1]) fen += 'Q';
+  if (castling_rights[2]) fen += 'k';
+  if (castling_rights[3]) fen += 'q';
+  fen += '|';
   fen += idx2sq(enpassant_sq_idx);
   return fen;
 }

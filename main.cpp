@@ -6,6 +6,7 @@
 #include "game.hpp"
 
 bool debug_mode = false;
+thread ai_thread;
 
 void test_navigation() {
   Game g;
@@ -150,6 +151,8 @@ void uci() {
   while (getline(cin, line)) {
     istringstream iss(line);
     iss >> token;
+    if (token[0] == '#') continue;  // ignore comments
+
     if (token == "uci") {
       cout << "id name Chess by Soham" << endl;
       cout << "id author Soham Korade" << endl;
@@ -224,11 +227,13 @@ void uci() {
           }
         }
       }
-      cout << "timings: " << ai.wtime << " " << ai.btime << " " << ai.winc
-           << " " << ai.binc << endl;
-      auto [bestmove, bestscore] = ai.search(transpositions);
-      cout << "bestmove " << board.to_uci(bestmove) << endl;
+      if (!ai.searching) {
+        if (ai_thread.joinable()) ai_thread.join();
+        ai_thread = thread([&]() { ai.search(transpositions); });
+      }
     } else if (token == "stop") {
+      ai.searching = false;
+      if (ai_thread.joinable()) ai_thread.join();
     } else if (token == "ponderhit") {
     } else if (token == "debug") {
       iss >> token;

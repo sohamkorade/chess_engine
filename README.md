@@ -1,7 +1,7 @@
 # chess_engine
 A UCI chess engine written in C++. GUI is developed using GTK4.
 
-[Coding blog: What, when, why I wrote what I wrote](blog.md)
+[Coding blog: What, when, why I wrote what I wrote](https://yonderchess.blogspot.com/)
 
 [@SohamChessBot](https://lichess.org/@/SohamChessBot) is on LiChess: [Watch](https://lichess.org/@/SohamChessBot/tv) or [Challenge](https://lichess.org/?user=SohamChessBot#friend)
 

@@ -187,3 +187,13 @@
 - plans:
 	- find a way to make `movelist` faster
 	- make move generation faster, I think checking for checks is the bottleneck.
+
+## 27 Dec 2022
+
+### 1 am
+- plans:
+	- handle `uci` commands on a separate thread
+	- optional comments in input using `#`
+
+### 4 am
+	- implemented! now engine can handle `stop` command after `go` command
