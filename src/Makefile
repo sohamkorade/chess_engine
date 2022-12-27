@@ -1,25 +1,33 @@
-FLAGS = @g++ -Wall -Ofast
+FLAGS = @g++ -Wall -Ofast -pg
 
-.PHONY: all alll main perfttest bestmovetest gui clean cleano
+GIT_SHA = $(shell git rev-parse --short HEAD 2>/dev/null)
+TIMESTAMP = $(shell date +%Y%m%d_%H%M)
 
-all: main perfttest bestmovetest gui
+.PHONY: all alll main runtest gui clean cleano archive test
+
+all: main runtest gui archive
+
+test: all
+	./test perft
+
+archive:
+	@cp main ../archive/main_$(TIMESTAMP)_$(GIT_SHA)
+	@cp runtest ../archive/runtest_$(TIMESTAMP)_$(GIT_SHA)
+	@cp gui ../archive/gui_$(TIMESTAMP)_$(GIT_SHA)
 
 alll:
 	$(FLAGS) -o main main.cpp game.cpp board.cpp movegen.cpp ai.cpp `pkg-config --cflags --libs gtk4`
-	$(FLAGS) -o perfttest perfttest.cpp game.cpp board.cpp movegen.cpp ai.cpp `pkg-config --cflags --libs gtk4`
-	$(FLAGS) -o bestmovetest bestmovetest.cpp game.cpp board.cpp movegen.cpp ai.cpp `pkg-config --cflags --libs gtk4`
+	$(FLAGS) -o runtest runtest.cpp game.cpp board.cpp movegen.cpp ai.cpp `pkg-config --cflags --libs gtk4`
 	$(FLAGS) -o gui gui.cpp game.cpp board.cpp movegen.cpp ai.cpp `pkg-config --cflags --libs gtk4`
 
 main: main.o game.o board.o movegen.o ai.o
 	$(FLAGS) -o main main.o game.o board.o movegen.o ai.o `pkg-config --cflags --libs gtk4`
-perfttest: perfttest.o board.o movegen.o 
-	$(FLAGS) -o perfttest perfttest.o board.o movegen.o 
-bestmovetest: bestmovetest.o board.o movegen.o ai.o
-	$(FLAGS) -o bestmovetest bestmovetest.o board.o movegen.o ai.o `pkg-config --cflags --libs gtk4`
+runtest: runtest.o board.o movegen.o ai.o
+	$(FLAGS) -o runtest runtest.o board.o movegen.o ai.o `pkg-config --cflags --libs gtk4`
 gui: gui.o board.o movegen.o game.o ai.o
 	$(FLAGS) -o gui gui.o board.o movegen.o game.o ai.o `pkg-config --cflags --libs gtk4`
 clean: cleano
-	rm main perfttest bestmovetest gui
+	rm main runtest gui
 cleano:
 	rm *.o
 
@@ -31,10 +39,8 @@ board.o: board.cpp
 	$(FLAGS) -c board.cpp
 movegen.o: movegen.cpp
 	$(FLAGS) -c movegen.cpp
-perfttest.o: perfttest.cpp
-	$(FLAGS) -c perfttest.cpp
-bestmovetest.o: bestmovetest.cpp
-	$(FLAGS) -c bestmovetest.cpp `pkg-config --cflags --libs gtk4`
+runtest.o: runtest.cpp
+	$(FLAGS) -c runtest.cpp -o runtest.o 
 ai.o: ai.cpp
 	$(FLAGS) -c ai.cpp `pkg-config --cflags --libs gtk4`
 gui.o: gui.cpp

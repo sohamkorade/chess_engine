@@ -205,6 +205,10 @@ vector<pair<int, Move>> AI::iterative_search() {
     cout << " time " << time_taken - time_taken_depth << " pv "
          << board.to_uci(bestmoves.front().second) << endl;
     time_taken_depth = time_taken;
+
+    // TODO: fix this
+    if (search_type == Mate)
+      debug = to_string(depth - 2 + get_mate_score(bestmoves.front().first));
   }
 
   // {
@@ -213,9 +217,6 @@ vector<pair<int, Move>> AI::iterative_search() {
   //   "\n\n"; log.close();
   // }
   cout << "info total time: " << time_taken << endl;
-
-  if (search_type == Mate)
-    debug = to_string(depth - 2 + get_mate_score(bestmoves.front().first));
 
   // TODO: choose random move out of same-scoring moves
 
