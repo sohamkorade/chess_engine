@@ -25,7 +25,7 @@ bool Game::make_move(Move m) {
     transpositions.clear();
 
   ply++, end++;
-  transpositions.insert(board.pos_hash());
+  transpositions.insert(board.zobrist_hash());
   result = get_result();
   return true;
 }
@@ -106,7 +106,7 @@ Status Game::get_result() {
   //   return Draw;
 
   // repetition
-  if (transpositions.count(board.pos_hash()) == 3) return Draw;
+  if (transpositions.count(board.zobrist_hash()) == 3) return Draw;
 
   return Undecided;
 }

@@ -1,5 +1,4 @@
-#include <sstream>
-#include <thread>
+
 
 #include "ai.hpp"
 #include "board.hpp"
@@ -77,8 +76,7 @@ void test_navigation() {
       cout << "https://lichess.org/analysis/" << fen << endl;
     } else if (cmd == "display" || cmd == "d") {
       g.board.print();
-      cout << "ply " << g.ply << " end " << g.end << endl
-           << "fen " << g.board.to_fen() << endl;
+      cout << "ply " << g.ply << " end " << g.end << endl;
     } else if (cmd == "play") {
       vector<Move> movelist;
       Move move;
@@ -136,13 +134,12 @@ void test_navigation() {
     } else if (cmd == "quit" || cmd == "q")
       break;
     g.board.print();
-    cout << "ply " << g.ply << " end " << g.end << endl
-         << "fen " << g.board.to_fen() << endl;
+    cout << "ply " << g.ply << " end " << g.end << endl;
   }
 }
 
 void uci() {
-  multiset<string> transpositions;
+  multiset<uint64_t> transpositions;
   Board board1;
   AI ai(board1);
   auto& board = ai.board;
@@ -179,7 +176,7 @@ void uci() {
       if (token == "moves") {
         while (iss >> token) {
           if (board.make_move(token))
-            transpositions.insert(board.pos_hash());
+            transpositions.insert(board.zobrist_hash());
           else
             break;
         }
@@ -220,7 +217,7 @@ void uci() {
           if (token == "moves") {
             while (iss >> token) {
               if (board.make_move(token))
-                transpositions.insert(board.pos_hash());
+                transpositions.insert(board.zobrist_hash());
               else
                 break;
             }
@@ -244,7 +241,6 @@ void uci() {
     } else if (token == "register") {
     } else if (token == "d") {
       board.print();
-      cout << "fen: " << board.to_fen() << endl;
     } else if (token == "quit") {
       break;
 
@@ -268,12 +264,10 @@ void uci() {
       board.divide(stoi(token));
     } else if (token == "debugmoves") {
       while (iss >> token) {
-        if (board.make_move(token)) {
+        if (board.make_move(token))
           board.print();
-          cout << "fen: " << board.to_fen() << endl;
-        } else {
+        else
           break;
-        }
       }
       board.load_startpos();
     } else if (token == "eval") {
@@ -282,10 +276,13 @@ void uci() {
       cout << "Invalid command: " << line << endl;
     }
   }
+  ai.searching = false;
+  if (ai_thread.joinable()) ai_thread.join();
 }
 
 int main() {
   srand(time(0));
   // test_navigation();
+  init_zobrist();
   uci();
 }

@@ -1,9 +1,5 @@
 #pragma once
 
-#include <gtk/gtk.h>
-
-#include <atomic>
-
 #include "board.hpp"
 #include "types.hpp"
 
@@ -22,14 +18,14 @@ class AI {
   int mtime = 1000;  // move time
   int max_depth = 100;
   SearchType search_type = Time_per_game;
-  map<string, TTEntry> TT;  // transposition table
-  vector<Move> PV;          // principal variation
+  unordered_map<uint64_t, TTEntry> TT;  // transposition table
+  vector<Move> PV;                      // principal variation
   atomic<bool> searching{false};
 
   string debug = "";
 
   AI(Board &board);
-  pair<Move, int> search(multiset<string> &transpositions);
+  pair<Move, int> search(multiset<uint64_t> &transpositions);
   void set_clock(int _wtime, int _btime, int _winc, int _binc);
   int print_eval();
   void prune_TT(int age);  // prune TT entries older than age

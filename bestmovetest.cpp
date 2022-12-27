@@ -1,9 +1,8 @@
-#include <chrono>
-#include <fstream>
+#include <unistd.h>
 
 #include "ai.hpp"
 
-multiset<string> transpositions;
+multiset<uint64_t> transpositions;
 
 int test(int argc, char* argv[]) {
   // cout.setstate(ios_base::failbit);

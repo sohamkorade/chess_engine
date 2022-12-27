@@ -28,7 +28,7 @@ void AI::set_clock(int _wtime, int _btime, int _winc, int _binc) {
   binc = _binc;
 }
 
-pair<Move, int> AI::search(multiset<string>& transpositions) {
+pair<Move, int> AI::search(multiset<uint64_t>& transpositions) {
   searching = true;
   auto movelist = iterative_search();
   searching = false;
@@ -38,7 +38,7 @@ pair<Move, int> AI::search(multiset<string>& transpositions) {
   for (int i = 1; i >= 0; i--) {
     for (auto& m : movelist) {
       board.make_move(m.second);
-      int tp = transpositions.count(board.pos_hash());
+      int tp = transpositions.count(board.zobrist_hash());
       board.unmake_move(m.second);
       if (tp > i) continue;
       if (m.first > bestscore) {
@@ -147,11 +147,16 @@ vector<pair<int, Move>> AI::iterative_search() {
 
       auto t1 = chrono::high_resolution_clock::now();
       board.make_move(score_move.second);
-      // // check TT
-      // auto key = board.pos_hash();
-      // auto& entry = TT[key];
+      // check in TT
+      // auto& entry = TT[board.zobrist_hash()];
       int score = 0;
       // if (entry.depth >= depth) {
+      //   // if (entry.eval_type == Exact)
+      //   //   score = entry.score;
+      //   // else if (entry.eval_type == LowerBound)
+      //   //   alpha = max(entry.score, alpha);
+      //   // else if (entry.eval_type == UpperBound)
+      //   //   beta = min(entry.score, beta);
       //   score = entry.score;
       // } else {
       score = -alphabeta(depth, mate_score, +MateScore);
@@ -178,11 +183,11 @@ vector<pair<int, Move>> AI::iterative_search() {
       // log << board.to_san(move) << " = " << score << "\n\n";
       // log.close();}
       // cout << "info " << board.to_san(move) << " = " << score2 << endl;
-      // cout << "info searching depth " << depth;
-      // print_score(score);
-      // // print_score(score2);
-      // cout << " time " << diff << " pv " << board.to_uci(score_move.second)
-      //      << endl;
+      cout << "info searching depth " << depth;
+      print_score(score);
+      // print_score(score2);
+      cout << " time " << diff << " pv " << board.to_uci(score_move.second)
+           << endl;
 
       // if (score > bestscore) {
       // bestscore = score;
@@ -192,8 +197,8 @@ vector<pair<int, Move>> AI::iterative_search() {
     }
 
     // move-ordering
-    sort(legalmoves.begin(), legalmoves.end(),
-         [](auto& a, auto& b) { return a.first > b.first; });
+    stable_sort(legalmoves.begin(), legalmoves.end(),
+                [](auto& a, auto& b) { return a.first > b.first; });
 
     cout << "info depth " << depth;
     print_score(bestmoves.front().first);
@@ -305,7 +310,6 @@ int AI::negamax(int depth) {
 int reduction(int depth, int moves) { return 1; }
 
 int AI::alphabeta(int depth, int alpha, int beta) {
-  // while (g_main_context_pending(0)) g_main_context_iteration(0, 0);
   int extra_depth = 0;
   bool is_in_check = board.is_in_check(board.turn);
   if (is_in_check) extra_depth++;
@@ -336,33 +340,47 @@ int AI::alphabeta(int depth, int alpha, int beta) {
 
   for (auto& move : legals) {
     board.make_move(move);
-    // // check in TT
-    // auto key = board.pos_hash();
-    // auto& entry = TT[key];
-    // int score = 0;
-    // if (entry.depth >= depth) {
-    //   score = entry.score;
-    // } else {
-    // late move reduction
-    if (moves < late_moves) {
-      score = -alphabeta(depth + extra_depth - 1, -beta, -alpha);
+    // check in TT
+    auto& entry = TT[board.zobrist_hash()];
+    int score = 0;
+    if (entry.depth >= depth) {
+      if (entry.eval_type == Exact)
+        score = entry.score;
+      else if (entry.eval_type == LowerBound)
+        alpha = max(entry.score, alpha);
+      else if (entry.eval_type == UpperBound)
+        beta = min(entry.score, beta);
+      if (alpha >= beta) {
+        board.unmake_move(move);
+        return entry.score;
+      }
     } else {
-      score = -alphabeta(depth + extra_depth - 1 - reduction(depth, moves),
-                         -beta, -alpha);
-      if (score >= alpha)
+      // late move reduction
+      if (moves < late_moves) {
         score = -alphabeta(depth + extra_depth - 1, -beta, -alpha);
+      } else {
+        score = -alphabeta(depth + extra_depth - 1 - reduction(depth, moves),
+                           -beta, -alpha);
+        if (score >= alpha)
+          score = -alphabeta(depth + extra_depth - 1, -beta, -alpha);
+      }
+      // store in TT
+      entry = {depth, score, board.moves, Exact, move};
     }
-    //   // store in TT
-    //   entry = {depth, score, board.moves, Exact, move};
-    // }
     board.unmake_move(move);
-    if (score >= beta) return score;
+    if (score >= beta) return score;  // fail hard beta-cutoff
     alpha = max(alpha, score);
     bestscore = max(bestscore, score);
     moves++;
   }
   // TODO: check + or - depth
-  if (legals.size() == 0) return is_in_check ? -MateScore + depth : 0;
+  if (legals.size() == 0) bestscore = is_in_check ? -MateScore + depth : 0;
+
+  //?
+  TTEntry entry = {depth, bestscore, board.moves, Exact, Move()};
+  if (bestscore <= alpha) entry.eval_type = UpperBound;
+  if (bestscore >= beta) entry.eval_type = LowerBound;
+  TT[board.zobrist_hash()] = entry;
 
   return bestscore;
 }

@@ -1,13 +1,18 @@
 #pragma once
 
 #include <algorithm>
+#include <atomic>
 #include <chrono>
-#include <cstring>
+#include <climits>
 #include <fstream>
+#include <future>
 #include <iostream>
 #include <map>
+#include <random>
 #include <set>
+#include <sstream>
 #include <string>
+#include <thread>
 #include <vector>
 using namespace std;
 

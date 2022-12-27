@@ -1,5 +1,12 @@
 #include "board.hpp"
 
+namespace Zobrist {
+uint64_t pst[64][12];   // piece square table
+uint64_t turn;          // turn
+uint64_t castling[4];   // castling rights
+uint64_t enpassant[8];  // enpassant file
+}  // namespace Zobrist
+
 int sq2idx(char file, char rank) {
   return (file - 'a') + (7 - (rank - '1')) * 8;  // matrix magic
 }
@@ -87,9 +94,10 @@ void Board::print(string sq, bool flipped) {
   }
   if (flipped) reverse(board, board + 64);
   cout << endl;
-}
 
-void Board::change_turn() { turn = turn == White ? Black : White; }
+  cout << "fen: " << to_fen() << endl;
+  cout << "zobrist key: " << hex << zobrist_hash() << dec << endl;
+}
 
 void Board::make_move(Move& move) {
   // save current aspects
@@ -138,6 +146,9 @@ void Board::make_move(Move& move) {
   board[move.to] = move.promotion == Empty ? board[move.from] : move.promotion;
   board[move.from] = move.captured;
   move.captured = captured;
+  hash ^= Zobrist::pst[move.from][board[move.from] + 6];  // remove moving piece
+  hash ^= Zobrist::pst[move.to][board[move.to] + 6];      // add moving piece
+  hash ^= Zobrist::pst[move.to][move.captured + 6];       // add moving piece
 
   if (move.castling) {  // move rook when castling
     if (move.from == 4 && move.to == 6)
@@ -239,6 +250,7 @@ bool Board::load_fen(string fen) {
     else if (board[i] == bK)
       kpos = i;
   if (Kpos == 64 || kpos == 64) return false;
+  hash = zobrist_hash();
   return part > 1;
 }
 
@@ -285,6 +297,7 @@ string Board::to_uci(Move move) {
 string Board::to_san(Move move) {
   Piece piece = static_cast<Piece>(abs(board[move.from]));
   string san;
+  san.reserve(5);
   if (move.castling) {
     if ((move.from == 4 && move.to == 6) || (move.from == 60 && move.to == 62))
       san = "O-O";
@@ -308,8 +321,6 @@ string Board::to_san(Move move) {
 void Board::load_startpos() {
   load_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
 }
-
-bool Board::empty(int idx) { return board[idx] == Empty; }
 
 // Move Board::match_san(vector<Move> movelist, string san) {
 //   // TODO
@@ -337,4 +348,32 @@ string Board::pos_hash() {
   fen += '|';
   fen += idx2sq(enpassant_sq_idx);
   return fen;
+}
+
+uint64_t Board::zobrist_hash() {
+  uint64_t hash = 0;
+  for (int i = 0; i < 64; i++)
+    if (board[i] != Empty) hash ^= Zobrist::pst[i][board[i] + 6];
+  if (turn == Black) hash ^= Zobrist::turn;
+  for (int i = 0; i < 4; i++)
+    if (castling_rights[i]) hash ^= Zobrist::castling[i];
+  if (~enpassant_sq_idx) hash ^= Zobrist::enpassant[enpassant_sq_idx % 8];
+  return hash;
+}
+
+void init_zobrist() {
+  random_device rd;
+  uniform_int_distribution<uint64_t> uni(0, UINT64_MAX);
+
+  for (int i = 0; i < 64; i++)    // squares
+    for (int j = 0; j < 12; j++)  // pieces
+      Zobrist::pst[i][j] = uni(rd);
+
+  for (int i = 0; i < 4; i++)  // castling rights
+    Zobrist::castling[i] = uni(rd);
+
+  Zobrist::turn = uni(rd);  // turn
+
+  for (int i = 0; i < 8; i++)  // enpassant files
+    Zobrist::enpassant[i] = uni(rd);
 }

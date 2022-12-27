@@ -96,6 +96,7 @@ void Board::generate_castling_moves(vector<Move>& pseudo) {
 }
 
 vector<Move> Board::generate_pseudo_moves() {
+  // cout << "gen pseudo @" << zobrist_hash() << endl;
   vector<Move> pseudo;
   pseudo.reserve(40);  // average number of pseudo moves per position
   for (int sq = 0; sq < 64; sq++) {
@@ -120,6 +121,7 @@ vector<Move> Board::generate_pseudo_moves() {
 }
 
 vector<Move> Board::generate_legal_moves() {
+  // cout << "gen legal @" << zobrist_hash() << endl;
   auto movelist = generate_pseudo_moves();
   vector<Move> sorted_moves, others;
   sorted_moves.reserve(movelist.size());
@@ -146,8 +148,9 @@ vector<Move> Board::generate_legal_moves() {
       }
     } else {
       make_move(move);
+      const int K_pos = (turn == Black ? Kpos : kpos);
       for (auto& x : generate_pseudo_moves())
-        if (x.to == (turn == Black ? Kpos : kpos)) {
+        if (x.to == K_pos) {
           valid_move = false;
           break;
         }
@@ -261,9 +264,8 @@ array<bool, 64> Board::get_threats() {
 
 vector<string> Board::list_san(vector<Move> movelist) {
   vector<string> temp;
+  temp.resize(movelist.size());
   for (auto& move : movelist) {
-    char piece = toupper(piece2char(board[move.from]));
-    char promotion = toupper(piece2char(move.promotion));
     string san;
     if (move.castling) {
       if ((move.from == 4 && move.to == 6) ||
@@ -273,6 +275,7 @@ vector<string> Board::list_san(vector<Move> movelist) {
                (move.from == 60 && move.to == 58))
         san = "O-O-O";
     } else {
+      char piece = toupper(piece2char(board[move.from]));
       if (piece != 'P') san = piece;
       bool from_file = false;
       bool from_rank = false;
@@ -291,16 +294,12 @@ vector<string> Board::list_san(vector<Move> movelist) {
       if (from_rank) san += idx2sq(move.from)[1];
       if (!empty(move.to) || move.enpassant) san += 'x';
       san += idx2sq(move.to);
-      if (move.promotion != '.') {
+      if (move.promotion != Empty) {
         san += '=';
-        san += promotion;
+        san += toupper(piece2char(move.promotion));
       }
-      change_turn();
-      // if (is_in_threat(board.find(turn == White ? 'K' : 'k'))) san += '+';
-      if (is_in_threat(turn == White ? Kpos : kpos)) san += '+';
-      change_turn();
+      if (is_in_check(turn)) san += '+';
     }
-
     temp.push_back(san);
   }
   return temp;

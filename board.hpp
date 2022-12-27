@@ -2,6 +2,10 @@
 
 #include "types.hpp"
 
+// https://www.chessprogramming.org/Zobrist_Hashing
+
+void init_zobrist();
+
 class Move {
  public:
   int from = 0, to = 0;
@@ -27,7 +31,8 @@ class Board {
   int Kpos = -1, kpos = -1;
   bool castling_rights[4] = {};
   Player turn = White;
-  // CheckType check = CheckNotChecked;
+  CheckType check = CheckNotChecked;
+  uint64_t hash = 0;
 
   Board();
   constexpr Piece operator[](int i);
@@ -56,6 +61,7 @@ class Board {
   bool is_in_check(Player player);
 
   string pos_hash();
+  uint64_t zobrist_hash();
 
  protected:
   void slide(vector<Move>& movelist, int sq, vector<Direction> dirs);
@@ -85,6 +91,9 @@ inline bool westwards(Direction dir) {
 inline bool eastwards(Direction dir) {
   return dir == NE || dir == SE || dir == E;
 }
+
+inline bool Board::empty(int idx) { return board[idx] == Empty; }
+inline void Board::change_turn() { turn = static_cast<Player>(-turn); }
 
 Piece char2piece(char p);
 char piece2char(Piece p);

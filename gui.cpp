@@ -1,8 +1,5 @@
 #include <gtk/gtk.h>
 
-#include <future>
-#include <map>
-
 #include "game.hpp"
 
 Game g;

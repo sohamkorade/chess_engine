@@ -1,6 +1,4 @@
 #pragma once
-#include <set>
-#include <unordered_set>
 
 #include "ai.hpp"
 #include "board.hpp"
@@ -11,8 +9,8 @@ class Game {
   vector<Move> movelist;
   int ply = 0, end = 0;
   Status result = Undecided;
-  multiset<Piece> white_alive,black_alive;
-  multiset<string> transpositions;
+  multiset<Piece> white_alive, black_alive;
+  multiset<uint64_t> transpositions;
 
   Game();
   bool make_move(string m);
