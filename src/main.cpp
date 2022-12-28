@@ -7,6 +7,17 @@
 bool debug_mode = false;
 thread ai_thread;
 
+void parse_and_make_moves(istringstream& iss, Board& board,
+                          multiset<uint64_t>& transpositions) {
+  string token;
+  while (iss >> token) {
+    if (board.make_move_if_legal(token))
+      transpositions.insert(board.zobrist_hash());
+    else
+      break;
+  }
+}
+
 void test_navigation() {
   Game g;
   // g.board.load_fen("8/8/3k4/8/8/3KP1r1/8/8 w - - 0 1");
@@ -171,16 +182,9 @@ void uci() {
       } else if (token == "startpos") {
         transpositions.clear();
         board.load_startpos();
-        iss >> token;
       }
-      if (token == "moves") {
-        while (iss >> token) {
-          if (board.make_move(token))
-            transpositions.insert(board.zobrist_hash());
-          else
-            break;
-        }
-      }
+      iss >> token;
+      if (token == "moves") parse_and_make_moves(iss, board, transpositions);
     } else if (token == "go") {
       // example: go wtime 56329 btime 86370 winc 1000 binc 1000
       ai.search_type = Time_per_game;
@@ -214,14 +218,11 @@ void uci() {
           transpositions.clear();
           board.load_startpos();
           iss >> token;
-          if (token == "moves") {
-            while (iss >> token) {
-              if (board.make_move(token))
-                transpositions.insert(board.zobrist_hash());
-              else
-                break;
-            }
-          }
+          if (token == "moves")
+            parse_and_make_moves(iss, board, transpositions);
+        } else if (token == "perft") {
+          iss >> token;
+          board.divide(stoi(token));
         }
       }
       if (!ai.searching) {
@@ -262,9 +263,9 @@ void uci() {
     } else if (token == "perft" || token == "divide") {
       iss >> token;
       board.divide(stoi(token));
-    } else if (token == "debugmoves") {
+    } else if (token == "moves") {
       while (iss >> token) {
-        if (board.make_move(token))
+        if (board.make_move_if_legal(token))
           board.print();
         else
           break;
@@ -272,6 +273,8 @@ void uci() {
       board.load_startpos();
     } else if (token == "eval") {
       ai.print_eval();
+    } else if (token == "isincheck") {
+      cout << board.is_in_check(board.turn) << endl;
     } else {
       cout << "Invalid command: " << line << endl;
     }

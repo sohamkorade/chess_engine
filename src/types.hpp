@@ -4,6 +4,7 @@
 #include <atomic>
 #include <chrono>
 #include <climits>
+#include <execution>
 #include <fstream>
 #include <future>
 #include <iostream>
@@ -16,7 +17,7 @@
 #include <vector>
 using namespace std;
 
-enum Direction {
+enum Direction : char {
   N = -8,
   S = +8,
   E = +1,

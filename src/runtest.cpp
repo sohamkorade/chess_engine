@@ -9,7 +9,7 @@ multiset<uint64_t> transpositions;
 
 int perft(int argc, char* argv[]) {
   // cout.setstate(ios_base::failbit);
-  string filename = "perftsuite.epd";
+  string filename = "../tests/perftsuite.epd";
   if (argc > 1) filename = argv[1];
   ifstream epd(filename);
   Board b;
@@ -65,7 +65,7 @@ int perft(int argc, char* argv[]) {
 
 int bestmove(int argc, char* argv[]) {
   // cout.setstate(ios_base::failbit);
-  string filename = "bestmovetest.epd";
+  string filename = "../tests/bestmovetest.epd";
   if (argc > 1) filename = argv[1];
   ifstream epd(filename);
   Board b;
@@ -120,7 +120,7 @@ int bestmove(int argc, char* argv[]) {
 }
 
 int mate(int argc, char* argv[]) {
-  string filename = "mates.epd";
+  string filename = "../tests/mates.epd";
   if (argc > 1) filename = argv[1];
   ifstream epd(filename);
   Board board1;

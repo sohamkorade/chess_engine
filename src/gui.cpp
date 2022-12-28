@@ -85,9 +85,9 @@ void update_board() {
     else if (valid_capture_sqs.count(i))
       gtk_widget_add_css_class(squares[i], "valid_capture_sq");
   }
-  // int K_pos = board.find(g.board.turn == White ? 'K' : 'k');
   int K_pos = g.board.turn == White ? g.board.Kpos : g.board.kpos;
-  if (~K_pos && g.board.is_in_threat(K_pos)) {
+  if (~K_pos && (g.board.turn == White ? g.board.is_in_threat<White>(K_pos)
+                                       : g.board.is_in_threat<Black>(K_pos))) {
     if (board_flipped) K_pos = 63 - K_pos;
     gtk_widget_add_css_class(squares[K_pos], "check_sq");
   }

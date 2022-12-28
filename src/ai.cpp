@@ -273,11 +273,11 @@ inline int AI::eval() {
   if (queens == 0) {  // assume near endgame
     pst_score += pst_k_end[board.Kpos] - pst_k_end[63 - board.kpos];
     // https://www.chessprogramming.org/Mop-up_Evaluation
-    int cmd =
+    const int cmd =
         (material_score > 0 ? pst_cmd[board.Kpos] : pst_cmd[63 - board.kpos]);
-    int file1 = board.Kpos % 8, rank1 = board.Kpos / 8;
-    int file2 = board.kpos % 8, rank2 = board.kpos / 8;
-    int md = abs(rank2 - rank1) + abs(file2 - file1);
+    const int file1 = board.Kpos % 8, rank1 = board.Kpos / 8;
+    const int file2 = board.kpos % 8, rank2 = board.kpos / 8;
+    const int md = abs(rank2 - rank1) + abs(file2 - file1);
     pst_score += 5 * cmd + 2 * (14 - md);
   }
 
@@ -291,8 +291,6 @@ inline int AI::eval() {
 }
 
 int AI::negamax(int depth) {
-  // while (g_main_context_pending(0)) g_main_context_iteration(0, 0);
-
   if (depth == 0) return eval() * board.turn;
   int bestscore = -MateScore;
   auto legals = board.generate_legal_moves();
@@ -338,11 +336,13 @@ int AI::alphabeta(int depth, int alpha, int beta) {
     board.change_turn();
     if (score >= beta) return score;
   }
-
+#define USE_TT 0
   for (auto& move : legals) {
     board.make_move(move);
+#if USE_TT
     // check in TT
     auto& entry = TT[board.zobrist_hash()];
+    cout << "d" << entry.depth << endl;
     int score = 0;
     if (entry.depth >= depth) {
       if (entry.eval_type == Exact)
@@ -356,6 +356,7 @@ int AI::alphabeta(int depth, int alpha, int beta) {
         return entry.score;
       }
     } else {
+#endif
       // late move reduction
       if (moves < late_moves) {
         score = -alphabeta(depth + extra_depth - 1, -beta, -alpha);
@@ -365,9 +366,11 @@ int AI::alphabeta(int depth, int alpha, int beta) {
         if (score >= alpha)
           score = -alphabeta(depth + extra_depth - 1, -beta, -alpha);
       }
+#if USE_TT
       // store in TT
       entry = {depth, score, board.moves, Exact, move};
     }
+#endif
     board.unmake_move(move);
     if (score >= beta) return score;  // fail hard beta-cutoff
     alpha = max(alpha, score);
@@ -377,12 +380,13 @@ int AI::alphabeta(int depth, int alpha, int beta) {
   // TODO: check + or - depth
   if (legals.size() == 0) bestscore = is_in_check ? -MateScore + depth : 0;
 
+#if USE_TT
   //?
-  TTEntry entry = {depth, bestscore, board.moves, Exact, Move()};
+  TTEntry entry = {depth, bestscore, board.moves, Exact, bestmove};
   if (bestscore <= alpha) entry.eval_type = UpperBound;
   if (bestscore >= beta) entry.eval_type = LowerBound;
   TT[board.zobrist_hash()] = entry;
-
+#endif
   return bestscore;
 }
 
@@ -391,7 +395,7 @@ int AI::quiesce(int depth, int alpha, int beta) {
 
   int pat = eval() * board.turn;
   if (pat >= beta) return beta;
-  if (depth > 5) return pat;
+  // if (depth > 5) return pat;
 
   // // delta pruning, 900=queen value
   // if (alpha - pat > 900) return alpha;

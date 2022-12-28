@@ -25,20 +25,20 @@ Piece char2piece(char p) {
 
 char piece2char(Piece p) { return "kqrbnp.PNBRQK"[p + 6]; }
 
-bool Board::make_move(string move) {
-  Move temp;
+bool Board::make_move_if_legal(string move) {
   int l = move.length();
   if (l == 4 || l == 5) {
-    temp.from = sq2idx(move[0], move[1]);
-    temp.to = sq2idx(move[2], move[3]);
+    const int from = sq2idx(move[0], move[1]);
+    const int to = sq2idx(move[2], move[3]);
+    Piece promotion = Empty;
     if (l == 5)
-      temp.promotion =
+      promotion =
           char2piece(turn == White ? toupper(move[4]) : tolower(move[4]));
-    temp.castling = (temp.from == Kpos && (move == "e1g1" || move == "e1c1")) ||
-                    (temp.from == kpos && (move == "e8g8" || move == "e8c8"));
-    temp.enpassant = abs(board[temp.from]) == wP && enpassant_sq_idx == temp.to;
-    make_move(temp);
-    return true;
+    for (auto& m : generate_legal_moves())
+      if (m.from == from && m.to == to && m.promotion == promotion) {
+        make_move(m);
+        return true;
+      }
   }
   return false;
 }
@@ -113,10 +113,10 @@ void Board::make_move(Move& move) {
     fifty++;
 
   // update castling rights and king pos
-  if (board[move.from] == wK) {
+  if (Kpos == move.from) {  // white king moved
     castling_rights[0] = castling_rights[1] = false;
     Kpos = move.to;
-  } else if (board[move.from] == bK) {
+  } else if (kpos == move.from) {  // black king moved
     castling_rights[2] = castling_rights[3] = false;
     kpos = move.to;
   }
@@ -142,7 +142,7 @@ void Board::make_move(Move& move) {
     enpassant_sq_idx = -1;
 
   // update board
-  Piece captured = board[move.to];
+  const Piece captured = board[move.to];
   board[move.to] = move.promotion == Empty ? board[move.from] : move.promotion;
   board[move.from] = move.captured;
   move.captured = captured;
@@ -160,7 +160,7 @@ void Board::make_move(Move& move) {
     else if (move.from == 60 && move.to == 58)
       board[56] = Empty, board[59] = wR;
   } else if (move.enpassant) {  // remove pawn when enpassant
-    int rel_S = turn * S;       //(turn == White ? S : N);
+    int rel_S = turn * S;
     board[move.to + rel_S] = Empty;
   }
   change_turn();
@@ -175,13 +175,15 @@ void Board::unmake_move(Move& move) {
   // moves = move.moves;
 
   // restore king pos
-  if (board[move.to] == wK) Kpos = move.from;
-  if (board[move.to] == bK) kpos = move.from;
+  if (Kpos == move.to)
+    Kpos = move.from;
+  else if (kpos == move.to)
+    kpos = move.from;
 
   // update board
   Piece captured = board[move.from];
   board[move.from] =
-      move.promotion == Empty ? board[move.to] : (turn == Black ? wP : bP);
+      move.promotion == Empty ? board[move.to] : static_cast<Piece>(-turn * wP);
   board[move.to] = move.captured;
   move.captured = captured;
 
@@ -195,8 +197,8 @@ void Board::unmake_move(Move& move) {
     else if (move.from == 60 && move.to == 58)
       board[56] = wR, board[59] = Empty;
   } else if (move.enpassant) {  // add pawn when enpassant
-    int rel_N = turn * N;       // (turn == White ? N : S);
-    board[move.to + rel_N] = (turn == White ? wP : bP);  // TODO:verify
+    int rel_N = turn * N;
+    board[move.to + rel_N] = static_cast<Piece>(turn * wP);  // TODO:verify
   }
   change_turn();
 

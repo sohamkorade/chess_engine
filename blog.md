@@ -197,3 +197,11 @@
 
 ### 4 am
 	- implemented! now engine can handle `stop` command after `go` command
+
+## 28 Dec 2022
+
+## evening
+- BIG IMPROVEMENT:
+	- wrote hand-crafted `is_in_threat` function, now engine can avoid moves leading to checks!
+	- earlier it worked by generating all opponent's pseudo-legal moves and checked if any move attacks a square.
+	- this made move generation faster by 3.5x!

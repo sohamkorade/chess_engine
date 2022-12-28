@@ -40,7 +40,7 @@ class Board {
   int sq_color(int sq_idx);
   void print(string sq = "", bool flipped = false);
   void change_turn();
-  bool make_move(string move);
+  bool make_move_if_legal(string move);
   void make_move(Move& move);
   void unmake_move(Move& move);
   bool load_fen(string fen);
@@ -55,8 +55,9 @@ class Board {
   // Move match_san(vector<Move> movelist, string san);
   vector<string> list_san(vector<Move> movelist);
   int divide(int depth);
-  int perft(int depth, int K_pos);
+  int perft(int depth);
 
+  template <Player turn>
   bool is_in_threat(int sq);
   bool is_in_check(Player player);
 
@@ -64,13 +65,15 @@ class Board {
   uint64_t zobrist_hash();
 
  protected:
-  void slide(vector<Move>& movelist, int sq, vector<Direction> dirs);
-  void move_or_capture(vector<Move>& movelist, int sq, int dir);
+  inline void slide(vector<Move>& movelist, int sq, vector<Direction> dirs);
+  inline void move_or_capture(vector<Move>& movelist, int sq, int dir);
 
+  template <Player turn>
   void generate_pawn_moves(vector<Move>& pseudo, int sq);
   void generate_knight_moves(vector<Move>& pseudo, int sq);
   void generate_king_moves(vector<Move>& pseudo, int sq);
   void generate_castling_moves(vector<Move>& pseudo);
+  inline void generate_promotions(vector<Move>& pseudo, int sq, Direction dir);
 };
 
 int sq2idx(char file, char rank);
@@ -85,11 +88,34 @@ inline bool isnt_A(int idx) { return idx % 8 != 0; }
 inline bool isnt_8(int idx) { return idx / 8 != 0; }
 inline bool isnt_1(int idx) { return idx / 8 != 7; }
 
+template <Direction dir>
+constexpr bool is_safe(int idx) {
+  if constexpr (dir == N)
+    return isnt_8(idx);
+  else if constexpr (dir == S)
+    return isnt_1(idx);
+  else if constexpr (dir == E)
+    return isnt_H(idx);
+  else if constexpr (dir == W)
+    return isnt_A(idx);
+  else if constexpr (dir == NE)
+    return isnt_H(idx) && isnt_8(idx);
+  else if constexpr (dir == NW)
+    return isnt_A(idx) && isnt_8(idx);
+  else if constexpr (dir == SE)
+    return isnt_H(idx) && isnt_1(idx);
+  else if constexpr (dir == SW)
+    return isnt_A(idx) && isnt_1(idx);
+  return true;
+}
+
 inline bool westwards(Direction dir) {
-  return dir == NW || dir == SW || dir == W;
+  // return dir == NW || dir == SW || dir == W;
+  return (dir & 7) == 7;  // &7 is the same as %8
 }
 inline bool eastwards(Direction dir) {
-  return dir == NE || dir == SE || dir == E;
+  // return dir == NE || dir == SE || dir == E;
+  return (dir & 7) == 1;  // &7 is the same as %8
 }
 
 inline bool Board::empty(int idx) { return board[idx] == Empty; }
