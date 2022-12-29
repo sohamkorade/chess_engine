@@ -4,7 +4,7 @@
 
 const int MateScore = 1000000;
 
-int piece_val[13] = {0};
+int piece_val[13] = {};
 
 AI::AI(Board& _board) : board(_board) {
   piece_val[wK + 6] = 10000;
@@ -98,7 +98,7 @@ vector<pair<int, Move>> AI::iterative_search() {
   }
 
   // convert moves to score-move pairs
-  auto legals = board.generate_legal_moves();
+  auto legals = generate_legal_moves(board);
   vector<pair<int, Move>> legalmoves;
   for (auto& move : legals) legalmoves.push_back({0, move});
 
@@ -116,6 +116,7 @@ vector<pair<int, Move>> AI::iterative_search() {
         break;
       }
 
+      assert(legalmoves.size() > 0);
       // mate found so prune non-mating moves (TODO: verify)
       if (get_mate_score(legalmoves.front().first) > 0) {
         for (auto& move : legalmoves)
@@ -159,8 +160,8 @@ vector<pair<int, Move>> AI::iterative_search() {
       //   //   beta = min(entry.score, beta);
       //   score = entry.score;
       // } else {
-      score = -alphabeta(depth, mate_score, +MateScore);
-      // int score2 = -negamax(depth);
+      // score = -alphabeta(depth, mate_score, +MateScore);
+      score = -negamax(depth);
       //   // store in TT
       //   entry = {depth, score, board.moves, Exact, score_move.second};
       // }
@@ -239,11 +240,11 @@ int AI::print_eval() {
   if (queens == 0) {  // assume near endgame
     pst_score += pst_k_end[board.Kpos] - pst_k_end[63 - board.kpos];
     // https://www.chessprogramming.org/Mop-up_Evaluation
-    int cmd =
+    const int cmd =
         (material_score > 0 ? pst_cmd[board.Kpos] : pst_cmd[63 - board.kpos]);
-    int file1 = board.Kpos % 8, rank1 = board.Kpos / 8;
-    int file2 = board.kpos % 8, rank2 = board.kpos / 8;
-    int md = abs(rank2 - rank1) + abs(file2 - file1);
+    const int file1 = board.Kpos % 8, rank1 = board.Kpos / 8;
+    const int file2 = board.kpos % 8, rank2 = board.kpos / 8;
+    const int md = abs(rank2 - rank1) + abs(file2 - file1);
     pst_score += 5 * cmd + 2 * (14 - md);
   }
 
@@ -251,7 +252,7 @@ int AI::print_eval() {
   cout << "material: " << material_score << endl;
   cout << "position: " << pst_score << endl;
 
-  cout << "is in check: " << board.is_in_check(board.turn) << endl;
+  cout << "is in check: " << is_in_check(board, board.turn) << endl;
 
   return material_score + pst_score;
 }
@@ -262,7 +263,7 @@ inline int AI::eval() {
   int mobility_score = 0;
   int queens = 0;
   for (int i = 0; i < 64; i++) {
-    Piece piece = board.board[i];
+    const Piece piece = board.board[i];
     if (abs(piece) == wQ) queens++;
     material_score += piece_val[piece + 6];
     if (piece)
@@ -293,7 +294,7 @@ inline int AI::eval() {
 int AI::negamax(int depth) {
   if (depth == 0) return eval() * board.turn;
   int bestscore = -MateScore;
-  auto legals = board.generate_legal_moves();
+  auto legals = generate_legal_moves(board);
   for (auto& move : legals) {
     board.make_move(move);
     int score = -negamax(depth - 1);
@@ -301,7 +302,7 @@ int AI::negamax(int depth) {
     bestscore = max(bestscore, score);
   }
   if (legals.size() == 0)
-    return board.is_in_check(board.turn) ? -MateScore + depth : 0;
+    return is_in_check(board, board.turn) ? -MateScore + depth : 0;
 
   return bestscore;
 }
@@ -310,8 +311,8 @@ int reduction(int depth, int moves) { return 1; }
 
 int AI::alphabeta(int depth, int alpha, int beta) {
   int extra_depth = 0;
-  bool is_in_check = board.is_in_check(board.turn);
-  if (is_in_check) extra_depth++;
+  bool checked = is_in_check(board, board.turn);
+  if (checked) extra_depth++;
 
   // Mate distance pruning
   alpha = max(alpha, -MateScore + board.moves);
@@ -321,7 +322,7 @@ int AI::alphabeta(int depth, int alpha, int beta) {
   if (depth <= 0 || depth > 50) return quiesce(0, alpha, beta);
   int bestscore = -MateScore;
 
-  auto legals = board.generate_legal_moves();
+  auto legals = generate_legal_moves(board);
 
   // if (legals.size() == 1) return alpha;
 
@@ -329,7 +330,7 @@ int AI::alphabeta(int depth, int alpha, int beta) {
   int score;
 
   // null move pruning
-  if (!is_in_check) {
+  if (!checked) {
     board.change_turn();
     score = -alphabeta(depth + extra_depth - reduction(depth, moves), -beta,
                        -alpha);
@@ -357,15 +358,15 @@ int AI::alphabeta(int depth, int alpha, int beta) {
       }
     } else {
 #endif
-      // late move reduction
-      if (moves < late_moves) {
-        score = -alphabeta(depth + extra_depth - 1, -beta, -alpha);
-      } else {
-        score = -alphabeta(depth + extra_depth - 1 - reduction(depth, moves),
-                           -beta, -alpha);
-        if (score >= alpha)
-          score = -alphabeta(depth + extra_depth - 1, -beta, -alpha);
-      }
+      // // late move reduction
+      // if (moves < late_moves) {
+      //   score = -alphabeta(depth + extra_depth - 1, -beta, -alpha);
+      // } else {
+      //   score = -alphabeta(depth + extra_depth - 1 - reduction(depth, moves),
+      //                      -beta, -alpha);
+      //   if (score >= alpha)
+      score = -alphabeta(depth + extra_depth - 1, -beta, -alpha);
+      // }
 #if USE_TT
       // store in TT
       entry = {depth, score, board.moves, Exact, move};
@@ -395,14 +396,14 @@ int AI::quiesce(int depth, int alpha, int beta) {
 
   int pat = eval() * board.turn;
   if (pat >= beta) return beta;
-  // if (depth > 5) return pat;
+  if (depth > 5) return pat;
 
   // // delta pruning, 900=queen value
   // if (alpha - pat > 900) return alpha;
 
   alpha = max(alpha, pat);
 
-  auto legals = board.generate_legal_moves();
+  auto legals = generate_legal_moves(board);
 
   // if (legals.size() == 1) return 0;
 
@@ -415,7 +416,7 @@ int AI::quiesce(int depth, int alpha, int beta) {
     alpha = max(alpha, score);
   }
   if (legals.size() == 0)
-    return board.is_in_check(board.turn) ? -MateScore + depth : 0;
+    return is_in_check(board, board.turn) ? -MateScore + depth : 0;
 
   return alpha;
 }

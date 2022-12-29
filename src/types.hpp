@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <atomic>
+#include <cassert>
 #include <chrono>
 #include <climits>
 #include <execution>
@@ -25,8 +26,19 @@ enum Direction : char {
   NE = -7,
   NW = -9,
   SE = +9,
-  SW = +7
+  SW = +7,
+  NN = N + N,
+  SS = S + S,
+  NNW = N + NW,
+  NNE = N + NE,
+  WNW = W + NW,
+  WSW = W + SW,
+  ENE = E + NE,
+  ESE = E + SE,
+  SSW = S + SW,
+  SSE = S + SE
 };
+
 enum Player { White = 1, Black = -1 };
 enum Status { Undecided, WhiteWins, BlackWins, Draw };
 
@@ -45,6 +57,8 @@ enum Piece {
   bQ = -5,
   bK = -6
 };
+
+typedef Piece Position[64];
 
 enum SearchType {
   Infinite,

@@ -59,7 +59,7 @@ void Game::seek(int n) {
 }
 
 Move Game::random_move() {
-  vector<Move> legal = board.generate_legal_moves();
+  vector<Move> legal = generate_legal_moves(board);
   Move bestmove;
   if (legal.size() > 0) {
     bestmove = legal[rand() % legal.size()];
@@ -78,9 +78,9 @@ pair<Move, int> Game::ai_move() {
 
 Status Game::get_result() {
   if (result != Undecided) return result;
-  bool can_move = board.generate_legal_moves().size();
+  bool can_move = generate_legal_moves(board).size();
   if (!can_move) {
-    if (board.is_in_check(board.turn))
+    if (is_in_check(board, board.turn))
       return board.turn == White ? BlackWins : WhiteWins;
     else
       return Draw;

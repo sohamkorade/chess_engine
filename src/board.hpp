@@ -26,21 +26,20 @@ class Move {
 
 class Board {
  public:
-  Piece board[64];
+  Position board;
   int enpassant_sq_idx = -1, fifty = 0, moves = 1;
   int Kpos = -1, kpos = -1;
   bool castling_rights[4] = {};
   Player turn = White;
-  CheckType check = CheckNotChecked;
+  // CheckType check = CheckNotChecked;
   uint64_t hash = 0;
 
   Board();
-  constexpr Piece operator[](int i);
+  constexpr Piece operator[](int i) { return board[i]; }
   int piece_color(int sq_idx);
   int sq_color(int sq_idx);
   void print(string sq = "", bool flipped = false);
-  void change_turn();
-  bool make_move_if_legal(string move);
+  inline void change_turn();
   void make_move(Move& move);
   void unmake_move(Move& move);
   bool load_fen(string fen);
@@ -48,33 +47,14 @@ class Board {
   string to_uci(Move move);
   string to_san(Move move);
   void load_startpos();
-  bool empty(int idx);
-  vector<Move> generate_pseudo_moves();
-  vector<Move> generate_legal_moves();
-  array<bool, 64> get_threats();
-  // Move match_san(vector<Move> movelist, string san);
+  inline bool empty(int idx);
   vector<string> list_san(vector<Move> movelist);
-  int divide(int depth);
-  int perft(int depth);
-
-  template <Player turn>
-  bool is_in_threat(int sq);
-  bool is_in_check(Player player);
 
   string pos_hash();
   uint64_t zobrist_hash();
-
- protected:
-  inline void slide(vector<Move>& movelist, int sq, vector<Direction> dirs);
-  inline void move_or_capture(vector<Move>& movelist, int sq, int dir);
-
-  template <Player turn>
-  void generate_pawn_moves(vector<Move>& pseudo, int sq);
-  void generate_knight_moves(vector<Move>& pseudo, int sq);
-  void generate_king_moves(vector<Move>& pseudo, int sq);
-  void generate_castling_moves(vector<Move>& pseudo);
-  inline void generate_promotions(vector<Move>& pseudo, int sq, Direction dir);
 };
+
+inline void Board::change_turn() { turn = Player(-turn); }
 
 int sq2idx(char file, char rank);
 string idx2sq(int idx);
@@ -82,14 +62,28 @@ string idx2sq(int idx);
 inline bool friendly(Piece a, Piece b) { return a * b > 0; }
 inline bool hostile(Piece a, Piece b) { return a * b < 0; }
 inline bool in_board(int idx) { return idx >= 0 && idx < 64; }
+inline bool Board::empty(int index) { return board[index] == Empty; }
 
 inline bool isnt_H(int idx) { return idx % 8 != 7; }
 inline bool isnt_A(int idx) { return idx % 8 != 0; }
 inline bool isnt_8(int idx) { return idx / 8 != 0; }
 inline bool isnt_1(int idx) { return idx / 8 != 7; }
 
+inline bool westwards(Direction dir) {
+  // return dir == NW || dir == SW || dir == W;
+  return (dir & 7) == 7;  // &7 is the same as %8
+}
+inline bool eastwards(Direction dir) {
+  // return dir == NE || dir == SE || dir == E;
+  return (dir & 7) == 1;  // &7 is the same as %8
+}
+
+Piece char2piece(char p);
+char piece2char(Piece p);
+
 template <Direction dir>
 constexpr bool is_safe(int idx) {
+  const int rank = idx / 8, file = idx % 8;
   if constexpr (dir == N)
     return isnt_8(idx);
   else if constexpr (dir == S)
@@ -106,20 +100,22 @@ constexpr bool is_safe(int idx) {
     return isnt_H(idx) && isnt_1(idx);
   else if constexpr (dir == SW)
     return isnt_A(idx) && isnt_1(idx);
-  return true;
+  else if constexpr (dir == N + NE)
+    return isnt_8(idx) && isnt_H(idx) && rank > 1;
+  else if constexpr (dir == N + NW)
+    return isnt_8(idx) && isnt_A(idx) && rank > 1;
+  else if constexpr (dir == S + SE)
+    return isnt_1(idx) && isnt_H(idx) && rank < 6;
+  else if constexpr (dir == S + SW)
+    return isnt_1(idx) && isnt_A(idx) && rank < 6;
+  else if constexpr (dir == E + NE)
+    return isnt_H(idx) && isnt_8(idx) && file < 6;
+  else if constexpr (dir == E + SE)
+    return isnt_H(idx) && isnt_1(idx) && file < 6;
+  else if constexpr (dir == W + NW)
+    return isnt_A(idx) && isnt_8(idx) && file > 1;
+  else if constexpr (dir == W + SW)
+    return isnt_A(idx) && isnt_1(idx) && file > 1;
+  else
+    return true;
 }
-
-inline bool westwards(Direction dir) {
-  // return dir == NW || dir == SW || dir == W;
-  return (dir & 7) == 7;  // &7 is the same as %8
-}
-inline bool eastwards(Direction dir) {
-  // return dir == NE || dir == SE || dir == E;
-  return (dir & 7) == 1;  // &7 is the same as %8
-}
-
-inline bool Board::empty(int idx) { return board[idx] == Empty; }
-inline void Board::change_turn() { turn = static_cast<Player>(-turn); }
-
-Piece char2piece(char p);
-char piece2char(Piece p);

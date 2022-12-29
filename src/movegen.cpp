@@ -1,91 +1,177 @@
-#include "board.hpp"
+#include "movegen.hpp"
 
-void Board::generate_king_moves(vector<Move>& pseudo, int sq) {
-  if (isnt_1(sq)) move_or_capture(pseudo, sq, S);                 // S
-  if (isnt_8(sq)) move_or_capture(pseudo, sq, N);                 // N
-  if (isnt_H(sq)) move_or_capture(pseudo, sq, E);                 // E
-  if (isnt_A(sq)) move_or_capture(pseudo, sq, W);                 // W
-  if (isnt_1(sq) && isnt_H(sq)) move_or_capture(pseudo, sq, SE);  // SE
-  if (isnt_1(sq) && isnt_A(sq)) move_or_capture(pseudo, sq, SW);  // SW
-  if (isnt_8(sq) && isnt_H(sq)) move_or_capture(pseudo, sq, NE);  // NE
-  if (isnt_8(sq) && isnt_A(sq)) move_or_capture(pseudo, sq, NW);  // NW
+template <Direction dir>
+inline void only_capture(Position& pos, vector<Move>& movelist, int sq) {
+  if (is_safe<dir>(sq) && hostile(pos[sq], pos[sq + dir]))
+    movelist.push_back(Move(sq, sq + dir));
+}
+template <Direction dir>
+inline bool only_move(Position& pos, vector<Move>& movelist, int sq) {
+  if (is_safe<dir>(sq) && pos[sq + dir] == Empty) {
+    movelist.push_back(Move(sq, sq + dir));
+    return true;
+  }
+  return false;
 }
 
-inline void Board::generate_promotions(vector<Move>& pseudo, int sq,
-                                       Direction dir) {
-  for (auto& piece : {wQ, wR, wB, wN})
-    pseudo.push_back(Move(sq, sq + dir, static_cast<Piece>(piece * turn)));
+template <Direction dir>
+inline void slide(Position& pos, vector<Move>& movelist, int sq) {
+  if (!is_safe<dir>(sq)) return;
+  for (int dest = sq + dir; in_board(dest) && !friendly(pos[sq], pos[dest]);
+       dest += dir) {
+    movelist.push_back(Move(sq, dest));
+    if (hostile(pos[sq], pos[dest])) break;
+    if (!is_safe<dir>(dest)) break;
+  }
+}
+
+template <Direction... dirs>
+inline void slides(Position& pos, vector<Move>& movelist, int sq) {
+  initializer_list<int>{(slide<dirs>(pos, movelist, sq), 0)...};
 }
 
 template <Player turn>
-void Board::generate_pawn_moves(vector<Move>& pseudo, int sq) {
+bool is_in_threat(Position& pos, int sq) {
+  // for (auto& move : generate_pseudo_moves())
+  //   if (move.to == sq) return true;
+  // return false;
+
+  // generate and check reverse threats from sq
+  constexpr Piece oppK = Piece(-turn * wK);
+  constexpr Piece oppP = Piece(-turn * wP);
+  constexpr Piece oppN = Piece(-turn * wN);
+  constexpr Piece oppB = Piece(-turn * wB);
+  constexpr Piece oppR = Piece(-turn * wR);
+  constexpr Piece oppQ = Piece(-turn * wQ);
+
+  // for debugging
+  // #define true (printf("%d\n", __LINE__) || true)
+  // check for king threats
+  if (is_occupied<S, oppK>(pos, sq)) return true;
+  if (is_occupied<N, oppK>(pos, sq)) return true;
+  if (is_occupied<E, oppK>(pos, sq)) return true;
+  if (is_occupied<W, oppK>(pos, sq)) return true;
+  if (is_occupied<SE, oppK>(pos, sq)) return true;
+  if (is_occupied<SW, oppK>(pos, sq)) return true;
+  if (is_occupied<NE, oppK>(pos, sq)) return true;
+  if (is_occupied<NW, oppK>(pos, sq)) return true;
+
+  // check for pawn threats
+
+  if constexpr (turn == White) {
+    if (is_occupied<NW, oppP>(pos, sq)) return true;
+    if (is_occupied<NE, oppP>(pos, sq)) return true;
+  } else {
+    if (is_occupied<SW, oppP>(pos, sq)) return true;
+    if (is_occupied<SE, oppP>(pos, sq)) return true;
+  }
+
+  // check for knight threats
+  if (is_occupied<NNW, oppN>(pos, sq)) return true;
+  if (is_occupied<NNE, oppN>(pos, sq)) return true;
+  if (is_occupied<WNW, oppN>(pos, sq)) return true;
+  if (is_occupied<WSW, oppN>(pos, sq)) return true;
+  if (is_occupied<ENE, oppN>(pos, sq)) return true;
+  if (is_occupied<ESE, oppN>(pos, sq)) return true;
+  if (is_occupied<SSW, oppN>(pos, sq)) return true;
+  if (is_occupied<SSE, oppN>(pos, sq)) return true;
+
+  // check for bishop, rook queen threats
+  if (is_occupied_slide<NW, oppB, oppQ>(pos, sq)) return true;
+  if (is_occupied_slide<NE, oppB, oppQ>(pos, sq)) return true;
+  if (is_occupied_slide<SW, oppB, oppQ>(pos, sq)) return true;
+  if (is_occupied_slide<SE, oppB, oppQ>(pos, sq)) return true;
+  if (is_occupied_slide<N, oppR, oppQ>(pos, sq)) return true;
+  if (is_occupied_slide<S, oppR, oppQ>(pos, sq)) return true;
+  if (is_occupied_slide<E, oppR, oppQ>(pos, sq)) return true;
+  if (is_occupied_slide<W, oppR, oppQ>(pos, sq)) return true;
+
+#undef true
+
+  return false;  // no threats found
+}
+
+template <Direction dir>
+inline void jump(Position& pos, vector<Move>& movelist, int sq) {
+  if (is_safe<dir>(sq) && !friendly(pos[sq], pos[sq + dir]))
+    movelist.push_back(Move(sq, sq + dir));
+}
+
+template <Direction... dirs>
+inline void jumps(Position& pos, vector<Move>& movelist, int sq) {
+  initializer_list<int>{(jump<dirs>(pos, movelist, sq), 0)...};
+}
+
+template <Player turn>
+inline void generate_king_moves(Board& board, vector<Move>& pseudo) {
+  jumps<NE, NW, SE, SW, N, S, E, W>(board.board, pseudo,
+                                    turn == White ? board.Kpos : board.kpos);
+}
+
+template <Player turn>
+inline void generate_promotions(Board& board, vector<Move>& pseudo) {
+  constexpr int prom_start_sq = turn == White ? 8 : 48;
   constexpr Direction rel_N = turn == White ? N : S;
   constexpr Direction rel_NW = turn == White ? NW : SW;
   constexpr Direction rel_NE = turn == White ? NE : SE;
+  constexpr Direction rel_SW = turn == White ? SW : NW;
+  constexpr Direction rel_SE = turn == White ? SE : NE;
+  constexpr Piece rel_P = turn == White ? wP : bP;
+
+  for (int sq = prom_start_sq; sq < prom_start_sq + 8; sq++) {
+    if (board[sq] != rel_P) continue;
+    if (board.empty(sq + rel_N))
+      for (auto& piece : {wQ, wR, wB, wN})
+        pseudo.push_back(Move(sq, sq + rel_N, Piece(piece * turn)));
+    if (isnt_A(sq) && hostile(board[sq], board[sq + rel_NW]))
+      for (auto& piece : {wQ, wR, wB, wN})
+        pseudo.push_back(Move(sq, sq + rel_NW, Piece(piece * turn)));
+    if (isnt_H(sq) && hostile(board[sq], board[sq + rel_NE]))
+      for (auto& piece : {wQ, wR, wB, wN})
+        pseudo.push_back(Move(sq, sq + rel_NE, Piece(piece * turn)));
+  }
+
+  const auto& enpassant_sq_idx = board.enpassant_sq_idx;
+  if (~enpassant_sq_idx) {
+    if (is_occupied<rel_SE, rel_P>(board.board,
+                                   enpassant_sq_idx))  // capture enpassant NW
+      pseudo.push_back(Move(enpassant_sq_idx + rel_SE, enpassant_sq_idx, Empty,
+                            Empty, true));
+    else if (is_occupied<rel_SW, rel_P>(
+                 board.board, enpassant_sq_idx))  // capture enpassant NE
+      pseudo.push_back(Move(enpassant_sq_idx + rel_SW, enpassant_sq_idx, Empty,
+                            Empty, true));
+  }
+}
+
+template <Player turn>
+void generate_pawn_moves(Board& board, vector<Move>& pseudo, int sq) {
+  constexpr Direction rel_N = turn == White ? N : S;
+  constexpr Direction rel_NW = turn == White ? NW : SW;
+  constexpr Direction rel_NE = turn == White ? NE : SE;
+  constexpr Direction rel_2N = turn == White ? NN : SS;
   const int rank = sq / 8;
   const int rel_rank = turn == White ? rank : 7 - rank;
-  const Piece piece = board[sq];
 
-  if (empty(sq + rel_N)) {
-    if (rel_rank == 1)
-      generate_promotions(pseudo, sq, rel_N);  // promotion
-    else
-      pseudo.push_back(Move(sq, sq + rel_N));  // push
-    if (rel_rank == 6 && empty(sq + rel_N + rel_N))
-      pseudo.push_back(Move(sq, sq + rel_N + rel_N));  // double push
-  }
-  if (isnt_A(sq) && hostile(piece, board[sq + rel_NW])) {  // capture NW
-    if (rel_rank == 1)
-      generate_promotions(pseudo, sq, rel_NW);  // promotion capture
-    else
-      pseudo.push_back(Move(sq, sq + rel_NW));
-  }
-  if (isnt_H(sq) && hostile(piece, board[sq + rel_NE])) {  // capture NE
-    if (rel_rank == 1)
-      generate_promotions(pseudo, sq, rel_NE);  // promotion capture
-    else
-      pseudo.push_back(Move(sq, sq + rel_NE));
-  }
-  // for (const auto& dir : {rel_NW, rel_NE}) {
-  //   if (is_safe<rel_NW>(sq) && hostile(piece, board[sq + dir])) {
-  //     if (rel_rank == 1)
-  //       generate_promotions(pseudo, sq, dir);  // promotion capture
-  //     else
-  //       pseudo.push_back(Move(sq, sq + dir));
-  //   }
-  // }
-  if (rel_rank == 3) {
-    if (sq + rel_NW == enpassant_sq_idx)  // capture enpassant NW
-      pseudo.push_back(Move(sq, sq + rel_NW, Empty, Empty, true));
-    else if (sq + rel_NE == enpassant_sq_idx)  // capture enpassant NE
-      pseudo.push_back(Move(sq, sq + rel_NE, Empty, Empty, true));
-  }
+  only_capture<rel_NW>(board.board, pseudo, sq);  // capture NW
+  only_capture<rel_NE>(board.board, pseudo, sq);  // capture NE
+
+  if (only_move<rel_N>(board.board, pseudo, sq))  // push
+    if (rel_rank == 6)
+      only_move<rel_2N>(board.board, pseudo,
+                        sq);  // double push only if push succeeds
 }
 
-void Board::generate_knight_moves(vector<Move>& pseudo, int sq) {
-  const int file = sq % 8, rank = sq / 8;
-
-  if (rank > 1) {
-    if (isnt_A(sq)) move_or_capture(pseudo, sq, N + NW);  // UL
-    if (isnt_H(sq)) move_or_capture(pseudo, sq, N + NE);  // UR
-  }
-  if (file > 1) {
-    if (isnt_8(sq)) move_or_capture(pseudo, sq, W + NW);  // LU
-    if (isnt_1(sq)) move_or_capture(pseudo, sq, W + SW);  // LD
-  }
-  if (file < 6) {
-    if (isnt_8(sq)) move_or_capture(pseudo, sq, E + NE);  // RU
-    if (isnt_1(sq)) move_or_capture(pseudo, sq, E + SE);  // RD
-  }
-  if (rank < 6) {
-    if (isnt_A(sq)) move_or_capture(pseudo, sq, S + SW);  // DL
-    if (isnt_H(sq)) move_or_capture(pseudo, sq, S + SE);  // DR
-  }
+inline void generate_knight_moves(Board& board, vector<Move>& pseudo, int sq) {
+  jumps<NNW, NNE, WNW, WSW, ENE, ESE, SSW, SSE>(board.board, pseudo, sq);
 }
 
-void Board::generate_castling_moves(vector<Move>& pseudo) {
-  // castling
-  if (turn == White) {
+template <Player turn>
+inline void generate_castling_moves(Board& board, vector<Move>& pseudo) {
+  auto castling_rights = board.castling_rights;
+#define empty board.empty
+
+  if constexpr (turn == White) {
     // kingside
     if (castling_rights[0] && empty(61) && empty(62))
       pseudo.push_back(Move(60, 60 + E + E, Empty, Empty, false, true));
@@ -100,41 +186,112 @@ void Board::generate_castling_moves(vector<Move>& pseudo) {
     if (castling_rights[3] && empty(1) && empty(2) && empty(3))
       pseudo.push_back(Move(4, 4 + W + W, Empty, Empty, false, true));
   }
+
+#undef empty
 }
 
-vector<Move> Board::generate_pseudo_moves() {
+int perft(Board& board, int depth) {
+  if (depth <= 0) return 1;
+
+  auto legal = generate_legal_moves(board);
+  if (depth == 1) return legal.size();
+
+  int nodes = 0;
+  // Board before = *this;
+
+  for (auto& move : legal) {
+    board.make_move(move);
+    // Board after = *this;
+    nodes += perft(board, depth - 1);
+    board.unmake_move(move);
+    // if (before.to_fen() != this->to_fen()) {
+    //   cerr << "! "
+    //        << "undo failed" << endl;
+    //   cerr << "move: ";
+    //   move.print();
+    //   cerr << "before:       " << before.to_fen() << endl;
+    //   cerr << "after move:   " << after.to_fen() << endl;
+    //   cerr << "after unmove: " << to_fen() << endl;
+    //   break;
+    // }
+  }
+  return nodes;
+}
+
+int divide(Board& board, int depth) {
+  int sum = 0;
+  vector<string> moves;
+  moves.reserve(40);
+  auto legal = generate_legal_moves(board);
+  Board before = board;
+  for (auto& move : legal) {
+    board.make_move(move);
+    Board after = board;
+    int nodes = perft(board, depth - 1);
+    board.unmake_move(move);
+    if (before.to_fen() != board.to_fen()) {
+      cerr << "! "
+           << "undo failed" << endl;
+      cerr << "move: ";
+      move.print();
+      cerr << "before:       " << before.to_fen() << endl;
+      cerr << "after move:   " << after.to_fen() << endl;
+      cerr << "after unmove: " << board.to_fen() << endl;
+      break;
+    }
+    sum += nodes;
+    moves.push_back(board.to_uci(move) + ": " + to_string(nodes));
+  }
+  sort(moves.begin(), moves.end());
+  for (auto& move : moves) cerr << move << endl;
+  cerr << "Moves: " << legal.size() << endl;
+  cerr << "Nodes: " << sum << endl;
+  return sum;
+}
+
+template <Player turn>
+vector<Move> generate_pseudo_moves(Board& board) {
   // cout << "gen pseudo @" << zobrist_hash() << endl;
   vector<Move> pseudo;
   pseudo.reserve(40);  // average number of pseudo moves per position
 
-  generate_castling_moves(pseudo);
+  // we know where the king is
+  generate_king_moves<turn>(board, pseudo);
+  generate_castling_moves<turn>(board, pseudo);
+  generate_promotions<turn>(board, pseudo);
+
+  constexpr Piece rel_P = Piece(wP * turn);
+  constexpr Piece rel_N = Piece(wN * turn);
+  constexpr Piece rel_B = Piece(wB * turn);
+  constexpr Piece rel_R = Piece(wR * turn);
+  constexpr Piece rel_Q = Piece(wQ * turn);
 
   for (int sq = 0; sq < 64; sq++) {
-    if (!hostile(board[sq], static_cast<Piece>(turn))) {
-      const Piece rel_piece = static_cast<Piece>(abs(board[sq]));
-      if (rel_piece == wK)
-        generate_king_moves(pseudo, sq);
-      else if (rel_piece == wP)
-        if (turn == White)
-          generate_pawn_moves<White>(pseudo, sq);
-        else
-          generate_pawn_moves<Black>(pseudo, sq);
-      else if (rel_piece == wN)
-        generate_knight_moves(pseudo, sq);
-      else if (rel_piece == wB)
-        slide(pseudo, sq, {NW, NE, SW, SE});
-      else if (rel_piece == wR)
-        slide(pseudo, sq, {N, S, E, W});
-      else if (rel_piece == wQ)
-        slide(pseudo, sq, {N, S, E, W, NW, NE, SW, SE});
-    }
+    const int rank = sq / 8;
+    const int rel_rank = turn == White ? rank : 7 - rank;
+    const Piece p = board[sq];
+    if (p == rel_P && rel_rank != 1)
+      generate_pawn_moves<turn>(board, pseudo, sq);
+    else if (p == rel_N)
+      generate_knight_moves(board, pseudo, sq);
+    else if (p == rel_B)
+      slides<NW, NE, SW, SE>(board.board, pseudo, sq);
+    else if (p == rel_R)
+      slides<N, S, E, W>(board.board, pseudo, sq);
+    else if (p == rel_Q)
+      slides<N, S, E, W, NW, NE, SW, SE>(board.board, pseudo, sq);
   }
   return pseudo;
 }
 
-vector<Move> Board::generate_legal_moves() {
+vector<Move> generate_pseudo_moves(Board& board) {
+  return board.turn == White ? generate_pseudo_moves<White>(board)
+                             : generate_pseudo_moves<Black>(board);
+}
+template <Player turn>
+vector<Move> generate_legal_moves(Board& board) {
   // cout << "gen legal @" << zobrist_hash() << endl;
-  auto movelist = generate_pseudo_moves();
+  auto movelist = generate_pseudo_moves<turn>(board);
   vector<Move> sorted_moves, others;
   sorted_moves.reserve(movelist.size());
   others.reserve(movelist.size());
@@ -144,8 +301,8 @@ vector<Move> Board::generate_legal_moves() {
     // cout << "checking move ";
     // move.print();
     if (move.castling) {
-      // check if any squares between king and rook are threatened
-      auto threats = get_threats();
+      // check if any squares that king moves to are threatened
+      auto threats = get_threats<Player(-turn)>(board);
       if (  // white kingside castling
           (move.from == 60 && move.to == 62 &&
            (threats[60] || threats[61] || threats[62])) ||
@@ -162,12 +319,12 @@ vector<Move> Board::generate_legal_moves() {
       }
     } else {
       // check if king is threatened
-      make_move(move);
-      valid_move = !is_in_check(static_cast<Player>(-turn));
-      unmake_move(move);
+      board.make_move(move);
+      valid_move = !is_in_check(board, turn);
+      board.unmake_move(move);
     }
     if (valid_move)
-      (empty(move.to) || move.promotion != Empty || move.enpassant ||
+      (board.empty(move.to) || move.promotion != Empty || move.enpassant ||
                move.castling
            ? sorted_moves
            : others)
@@ -183,174 +340,32 @@ vector<Move> Board::generate_legal_moves() {
   return sorted_moves;
 }
 
-int Board::perft(int depth) {
-  if (depth <= 0) return 1;
-
-  auto legal = generate_legal_moves();
-  if (depth == 1) return legal.size();
-
-  int nodes = 0;
-  // Board before = *this;
-
-  for (auto& move : legal) {
-    make_move(move);
-    // Board after = *this;
-    nodes += perft(depth - 1);
-    unmake_move(move);
-    // if (before.to_fen() != this->to_fen()) {
-    //   cerr << "! "
-    //        << "undo failed" << endl;
-    //   cerr << "move: ";
-    //   move.print();
-    //   cerr << "before:       " << before.to_fen() << endl;
-    //   cerr << "after move:   " << after.to_fen() << endl;
-    //   cerr << "after unmove: " << to_fen() << endl;
-    //   break;
-    // }
-  }
-  return nodes;
-}
-
-int Board::divide(int depth) {
-  int sum = 0;
-  vector<string> moves;
-  moves.reserve(40);
-  auto legals = generate_legal_moves();
-  // Board before = *this;
-  for (auto& move : legals) {
-    make_move(move);
-    // Board after = *this;
-    int nodes = perft(depth - 1);
-    unmake_move(move);
-    // if (before.to_fen() != this->to_fen()) {
-    //   cerr << "! "
-    //        << "undo failed" << endl;
-    //   cerr << "move: ";
-    //   move.print();
-    //   cerr << "before:       " << before.to_fen() << endl;
-    //   cerr << "after move:   " << after.to_fen() << endl;
-    //   cerr << "after unmove: " << to_fen() << endl;
-    //   break;
-    // }
-    sum += nodes;
-    moves.push_back(to_uci(move) + ": " + to_string(nodes));
-  }
-  sort(moves.begin(), moves.end());
-  for (auto& move : moves) cerr << move << endl;
-  cerr << "Moves: " << legals.size() << endl;
-  cerr << "Nodes: " << sum << endl;
-  return sum;
-}
-
-template <Player turn>
-bool Board::is_in_threat(int sq) {
-  // for (auto& move : generate_pseudo_moves())
-  //   if (move.to == sq) return true;
-  // return false;
-
-  // generate and check reverse threats from sq
-  const int file = sq % 8, rank = sq / 8;
-  constexpr Piece oppK = static_cast<Piece>(-turn * wK);
-  constexpr Piece oppP = static_cast<Piece>(-turn * wP);
-  constexpr Piece oppN = static_cast<Piece>(-turn * wN);
-  constexpr Piece oppB = static_cast<Piece>(-turn * wB);
-  constexpr Piece oppR = static_cast<Piece>(-turn * wR);
-  constexpr Piece oppQ = static_cast<Piece>(-turn * wQ);
-
-  // for debugging
-  // #define true (printf("%d\n", __LINE__) || true)
-  // check for king threats
-  if (isnt_1(sq) && board[sq + S] == oppK) return true;                 // S
-  if (isnt_8(sq) && board[sq + N] == oppK) return true;                 // N
-  if (isnt_H(sq) && board[sq + E] == oppK) return true;                 // E
-  if (isnt_A(sq) && board[sq + W] == oppK) return true;                 // W
-  if (isnt_1(sq) && isnt_H(sq) && board[sq + SE] == oppK) return true;  // SE
-  if (isnt_1(sq) && isnt_A(sq) && board[sq + SW] == oppK) return true;  // SW
-  if (isnt_8(sq) && isnt_H(sq) && board[sq + NE] == oppK) return true;  // NE
-  if (isnt_8(sq) && isnt_A(sq) && board[sq + NW] == oppK) return true;  // NW
-
-  // check for pawn threats
-  if (turn == White) {
-    if (isnt_8(sq)) {
-      if (isnt_A(sq) && board[sq + NW] == oppP) return true;  // NW
-      if (isnt_H(sq) && board[sq + NE] == oppP) return true;  // NE
-    }
-  } else {
-    if (isnt_1(sq)) {
-      if (isnt_A(sq) && board[sq + SW] == oppP) return true;  // SW
-      if (isnt_H(sq) && board[sq + SE] == oppP) return true;  // SE
-    }
-  }
-
-  // check for knight threats
-  if (rank > 1) {
-    if (isnt_A(sq) && board[sq + N + NW] == oppN) return true;  // UL
-    if (isnt_H(sq) && board[sq + N + NE] == oppN) return true;  // UR
-  }
-  if (file > 1) {
-    if (isnt_8(sq) && board[sq + W + NW] == oppN) return true;  // LU
-    if (isnt_1(sq) && board[sq + W + SW] == oppN) return true;  // LD
-  }
-  if (file < 6) {
-    if (isnt_8(sq) && board[sq + E + NE] == oppN) return true;  // RU
-    if (isnt_1(sq) && board[sq + E + SE] == oppN) return true;  // RD
-  }
-  if (rank < 6) {
-    if (isnt_A(sq) && board[sq + S + SW] == oppN) return true;  // DL
-    if (isnt_H(sq) && board[sq + S + SE] == oppN) return true;  // DR
-  }
-
-  // check for bishop, rook and queen threats
-  for (auto& dir : {NW, NE, SW, SE}) {
-    if (westwards(dir) && !isnt_A(sq)) continue;
-    if (eastwards(dir) && !isnt_H(sq)) continue;
-    for (int dest = sq + dir;
-         in_board(dest) && !friendly(board[sq], board[dest]); dest += dir) {
-      // cout << "dest: " << dest << endl;
-      // cout << "board[dest]: " << board[dest] << endl;
-      if (board[dest] == oppB || board[dest] == oppQ) return true;
-      if (board[dest] != Empty) break;  // different from slide
-      if (westwards(dir) && !isnt_A(dest)) break;
-      if (eastwards(dir) && !isnt_H(dest)) break;
-    }
-  }
-  for (auto& dir : {N, S, E, W}) {
-    if (westwards(dir) && !isnt_A(sq)) continue;
-    if (eastwards(dir) && !isnt_H(sq)) continue;
-    for (int dest = sq + dir;
-         in_board(dest) && !friendly(board[sq], board[dest]); dest += dir) {
-      if (board[dest] == oppR || board[dest] == oppQ) return true;
-      if (board[dest] != Empty) break;  // different from slide
-      if (westwards(dir) && !isnt_A(dest)) break;
-      if (eastwards(dir) && !isnt_H(dest)) break;
-    }
-  }
-
-#undef true
-
-  return false;  // no threats found
-}
-
-bool Board::is_in_check(Player player) {
-  // if (check) return player == check;
-  // CheckType check = CheckNotChecked;
-  if (turn == player)
-    return turn == White ? is_in_threat<White>(Kpos)
-                         : is_in_threat<Black>(kpos);
+vector<Move> generate_legal_moves(Board& board) {
+  if (board.turn == White)
+    return generate_legal_moves<White>(board);
   else
-    return turn == White ? is_in_threat<Black>(kpos)
-                         : is_in_threat<White>(Kpos);
+    return generate_legal_moves<Black>(board);
 }
 
-array<bool, 64> Board::get_threats() {
-  change_turn();
-  array<bool, 64> threats{false};
-  for (auto& move : generate_pseudo_moves()) threats[move.to] = true;
-  change_turn();
-  return threats;
+bool make_move_if_legal(Board& board, string move) {
+  int l = move.length();
+  if (l == 4 || l == 5) {
+    const int from = sq2idx(move[0], move[1]);
+    const int to = sq2idx(move[2], move[3]);
+    Piece promotion = Empty;
+    if (l == 5)
+      promotion =
+          char2piece(board.turn == White ? toupper(move[4]) : tolower(move[4]));
+    for (auto& m : generate_legal_moves(board))
+      if (m.from == from && m.to == to && m.promotion == promotion) {
+        board.make_move(m);
+        return true;
+      }
+  }
+  return false;
 }
 
-vector<string> Board::list_san(vector<Move> movelist) {
+vector<string> list_san(Board& board, vector<Move> movelist) {
   vector<string> temp;
   temp.resize(movelist.size());
   for (auto& move : movelist) {
@@ -363,7 +378,7 @@ vector<string> Board::list_san(vector<Move> movelist) {
                (move.from == 60 && move.to == 58))
         san = "O-O-O";
     } else {
-      char piece = toupper(piece2char(board[move.from]));
+      char piece = toupper(piece2char(board.board[move.from]));
       if (piece != 'P') san = piece;
       bool from_file = false;
       bool from_rank = false;
@@ -380,35 +395,15 @@ vector<string> Board::list_san(vector<Move> movelist) {
       }
       if (from_file) san += idx2sq(move.from)[0];
       if (from_rank) san += idx2sq(move.from)[1];
-      if (!empty(move.to) || move.enpassant) san += 'x';
+      if (!board.empty(move.to) || move.enpassant) san += 'x';
       san += idx2sq(move.to);
       if (move.promotion != Empty) {
         san += '=';
         san += toupper(piece2char(move.promotion));
       }
-      if (is_in_check(turn)) san += '+';
+      if (is_in_check(board, board.turn)) san += '+';
     }
     temp.push_back(san);
   }
   return temp;
-}
-
-inline void Board::slide(vector<Move>& movelist, int sq,
-                         vector<Direction> dirs) {
-  for (auto& dir : dirs) {
-    if (westwards(dir) && !isnt_A(sq)) continue;
-    if (eastwards(dir) && !isnt_H(sq)) continue;
-    for (int dest = sq + dir;
-         in_board(dest) && !friendly(board[sq], board[dest]); dest += dir) {
-      movelist.push_back(Move(sq, dest));
-      if (hostile(board[sq], board[dest])) break;
-      if (westwards(dir) && !isnt_A(dest)) break;
-      if (eastwards(dir) && !isnt_H(dest)) break;
-    }
-  }
-}
-
-inline void Board::move_or_capture(vector<Move>& movelist, int sq, int dir) {
-  if (!friendly(board[sq], board[sq + dir]))
-    movelist.push_back(Move(sq, sq + dir));
 }

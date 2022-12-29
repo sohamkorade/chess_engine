@@ -12,7 +12,7 @@ int perft(int argc, char* argv[]) {
   string filename = "../tests/perftsuite.epd";
   if (argc > 1) filename = argv[1];
   ifstream epd(filename);
-  Board b;
+  Board board;
   string line;
   int k = 1000;
   int count = 1;
@@ -29,7 +29,7 @@ int perft(int argc, char* argv[]) {
       end = line.find(" ;", start);
     } while (~end);
     parts.push_back(line.substr(start, end - start));
-    b.load_fen(parts[0]);
+    board.load_fen(parts[0]);
     cout << "fen: " << parts[0] << endl;
     for (size_t i = 1; i < parts.size(); i++) {
       cout << parts[i] << endl;
@@ -40,7 +40,7 @@ int perft(int argc, char* argv[]) {
         continue;
       }
       auto begin = chrono::high_resolution_clock::now();
-      int found = b.divide(i);
+      int found = divide(board, i);
       auto end = chrono::high_resolution_clock::now();
 
       auto elapsed =

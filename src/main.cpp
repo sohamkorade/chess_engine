@@ -11,7 +11,7 @@ void parse_and_make_moves(istringstream& iss, Board& board,
                           multiset<uint64_t>& transpositions) {
   string token;
   while (iss >> token) {
-    if (board.make_move_if_legal(token))
+    if (make_move_if_legal(board, token))
       transpositions.insert(board.zobrist_hash());
     else
       break;
@@ -27,11 +27,8 @@ void test_navigation() {
   while (cin >> cmd) {
     if (cmd == "list" || cmd == "l")
       g.print_movelist();
-    else if (cmd == "perft" || cmd == "divide") {
-      int depth;
-      cin >> depth;
-      g.board.divide(depth);
-    } else if (cmd == "rand" || cmd == "r") {
+
+    else if (cmd == "rand" || cmd == "r") {
       g.random_move();
     } else if (cmd == "random") {
       int times;
@@ -49,99 +46,10 @@ void test_navigation() {
       int pos;
       cin >> pos;
       g.seek(pos);
-    } else if (cmd == "pseudo") {
-      Game temp = g;
-      temp.movelist = g.board.generate_pseudo_moves();
-      temp.print_movelist();
     } else if (cmd == "turn") {
       g.board.change_turn();
-    } else if (cmd == "legal") {
-      Game temp = g;
-      temp.movelist = g.board.generate_legal_moves();
-      temp.print_movelist();
-    } else if (cmd == "threats") {
-      Board temp = g.board;
-      auto threats = g.board.get_threats();
-      for (int i = 0; i < 64; i++) temp.board[i] = (threats[i] ? wP : Empty);
-      temp.print();
-    } else if (cmd == "move" || cmd == "m") {
-      cin >> cmd;
-      bool valid = false;
-      for (auto& move : g.board.generate_pseudo_moves()) {
-        if (g.board.to_san(move) == cmd || g.board.to_uci(move) == cmd) {
-          cout << "Valid move" << endl;
-          g.make_move(move);
-          valid = true;
-          break;
-        }
-      }
-      if (!valid) cout << "Invalid move" << endl;
-    } else if (cmd == "fen") {
-      getline(cin, cmd);
-      g.board.load_fen(cmd.substr(1));
     } else if (cmd == "pgn") {
       g.print_pgn();
-    } else if (cmd == "lichess") {
-      string fen = g.board.to_fen();
-      replace(fen.begin(), fen.end(), ' ', '_');
-      cout << "https://lichess.org/analysis/" << fen << endl;
-    } else if (cmd == "display" || cmd == "d") {
-      g.board.print();
-      cout << "ply " << g.ply << " end " << g.end << endl;
-    } else if (cmd == "play") {
-      vector<Move> movelist;
-      Move move;
-      bool white = true;
-      // g.board.load_startpos();
-      cout << "Play as (1) White (2) Black" << endl;
-      cin >> cmd;
-      if (cmd == "2") {
-        move = g.random_move();
-        white = false;
-      }
-      while (cmd != "q") {
-        g.board.print(g.board.to_uci(move), !white);
-        movelist = g.board.generate_legal_moves();
-        cout << "(q) Quit (n) New game" << endl;
-        if (movelist.size() > 0) {
-          for (size_t i = 0; i < movelist.size(); i++) {
-            cout << "(";
-            cout.width(2);
-            cout << left << i + 1 << flush;
-            cout << ") ";
-            cout.width(7);
-            cout << g.board.to_san(movelist[i]) << flush;
-            if (i % 3 == 2) cout << endl;
-          }
-          cout << endl;
-          cout << "Choose move: ";
-          cin >> cmd;
-          if (cmd == "n") {
-            g.new_game();
-            continue;
-          }
-          size_t i = 0;
-          if (all_of(cmd.begin(), cmd.end(), ::isdigit)) i = stoi(cmd);
-          if (i > 0 && i <= movelist.size())
-            g.make_move(movelist[i - 1]);
-          else
-            cout << "Invalid move.";
-          move = g.random_move();
-          if (move.from == 0 && move.to == 0) {
-            if (g.board.is_in_check(white ? Black : White))
-              cout << "You win!" << endl;
-            else
-              cout << "Stalemate!" << endl;
-            break;
-          }
-        } else {
-          if (g.board.is_in_check(white ? White : Black))
-            cout << "I win!" << endl;
-          else
-            cout << "Stalemate!" << endl;
-          break;
-        }
-      }
     } else if (cmd == "quit" || cmd == "q")
       break;
     g.board.print();
@@ -187,6 +95,7 @@ void uci() {
       if (token == "moves") parse_and_make_moves(iss, board, transpositions);
     } else if (token == "go") {
       // example: go wtime 56329 btime 86370 winc 1000 binc 1000
+      transpositions.clear();
       ai.search_type = Time_per_game;
       ai.set_clock(30000, 30000, 0, 0);
       ai.max_depth = 100;
@@ -215,14 +124,16 @@ void uci() {
         } else if (token == "infinite") {
           ai.search_type = Infinite;
         } else if (token == "startpos") {
-          transpositions.clear();
           board.load_startpos();
           iss >> token;
           if (token == "moves")
             parse_and_make_moves(iss, board, transpositions);
         } else if (token == "perft") {
           iss >> token;
-          board.divide(stoi(token));
+          if (!ai.searching) {
+            if (ai_thread.joinable()) ai_thread.join();
+            ai_thread = thread([&]() { divide(board, stoi(token)); });
+          }
         }
       }
       if (!ai.searching) {
@@ -249,12 +160,12 @@ void uci() {
     } else if (token == "pseudo") {
       Game temp;
       temp.board = board;
-      temp.movelist = board.generate_pseudo_moves();
+      temp.movelist = generate_pseudo_moves(board);
       temp.print_movelist();
     } else if (token == "legal") {
       Game temp;
       temp.board = board;
-      temp.movelist = board.generate_legal_moves();
+      temp.movelist = generate_legal_moves(board);
       temp.print_movelist();
     } else if (token == "lichess") {
       string fen = board.to_fen();
@@ -262,10 +173,13 @@ void uci() {
       cout << "https://lichess.org/analysis/" << fen << endl;
     } else if (token == "perft" || token == "divide") {
       iss >> token;
-      board.divide(stoi(token));
+      if (!ai.searching) {
+        if (ai_thread.joinable()) ai_thread.join();
+        ai_thread = thread([&]() { divide(board, stoi(token)); });
+      }
     } else if (token == "moves") {
       while (iss >> token) {
-        if (board.make_move_if_legal(token))
+        if (make_move_if_legal(board, token))
           board.print();
         else
           break;
@@ -274,7 +188,7 @@ void uci() {
     } else if (token == "eval") {
       ai.print_eval();
     } else if (token == "isincheck") {
-      cout << board.is_in_check(board.turn) << endl;
+      cout << is_in_check(board, board.turn) << endl;
     } else {
       cout << "Invalid command: " << line << endl;
     }

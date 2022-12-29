@@ -1,7 +1,7 @@
 #include "board.hpp"
 
 namespace Zobrist {
-uint64_t pst[64][12];   // piece square table
+uint64_t pst[64][13];   // piece square table
 uint64_t turn;          // turn
 uint64_t castling[4];   // castling rights
 uint64_t enpassant[8];  // enpassant file
@@ -19,29 +19,11 @@ string idx2sq(int idx) {
 
 Piece char2piece(char p) {
   size_t pos = string("kqrbnp.PNBRQK").find(p);
-  if (pos != string::npos) return static_cast<Piece>(pos - 6);
+  if (pos != string::npos) return Piece(pos - 6);
   return Empty;
 }
 
 char piece2char(Piece p) { return "kqrbnp.PNBRQK"[p + 6]; }
-
-bool Board::make_move_if_legal(string move) {
-  int l = move.length();
-  if (l == 4 || l == 5) {
-    const int from = sq2idx(move[0], move[1]);
-    const int to = sq2idx(move[2], move[3]);
-    Piece promotion = Empty;
-    if (l == 5)
-      promotion =
-          char2piece(turn == White ? toupper(move[4]) : tolower(move[4]));
-    for (auto& m : generate_legal_moves())
-      if (m.from == from && m.to == to && m.promotion == promotion) {
-        make_move(m);
-        return true;
-      }
-  }
-  return false;
-}
 
 void Move::print() {
   cerr << "move: " << idx2sq(from) << idx2sq(to) << " " << captured << promotion
@@ -50,8 +32,6 @@ void Move::print() {
 }
 
 Board::Board() { load_startpos(); }
-
-constexpr Piece Board::operator[](int i) { return board[i]; }
 
 int Board::piece_color(int sq_idx) { return isupper(board[sq_idx]) ? 1 : -1; }
 int Board::sq_color(int sq_idx) {
@@ -97,6 +77,15 @@ void Board::print(string sq, bool flipped) {
 
   cout << "fen: " << to_fen() << endl;
   cout << "zobrist key: " << hex << zobrist_hash() << dec << endl;
+
+  cout << "DEBUG:" << endl;
+  cout << "ep: " << enpassant_sq_idx << ", fifty:" << fifty
+       << ", moves: " << moves << endl;
+  cout << "Kpos: " << Kpos << ", kpos: " << kpos << endl;
+  cout << "castling rights: ";
+  for (int i = 0; i < 4; i++) cout << castling_rights[i] << " ";
+  cout << endl;
+  cout << "turn: " << turn << endl;
 }
 
 void Board::make_move(Move& move) {
@@ -146,9 +135,10 @@ void Board::make_move(Move& move) {
   board[move.to] = move.promotion == Empty ? board[move.from] : move.promotion;
   board[move.from] = move.captured;
   move.captured = captured;
-  hash ^= Zobrist::pst[move.from][board[move.from] + 6];  // remove moving piece
-  hash ^= Zobrist::pst[move.to][board[move.to] + 6];      // add moving piece
-  hash ^= Zobrist::pst[move.to][move.captured + 6];       // add moving piece
+  // hash ^= Zobrist::pst[move.from][board[move.from] + 6];  // remove moving
+  // piece hash ^= Zobrist::pst[move.to][board[move.to] + 6];      // add moving
+  // piece hash ^= Zobrist::pst[move.to][move.captured + 6];       // add moving
+  // piece
 
   if (move.castling) {  // move rook when castling
     if (move.from == 4 && move.to == 6)
@@ -166,6 +156,16 @@ void Board::make_move(Move& move) {
   change_turn();
 
   moves++;
+
+  // debug
+  int _Kpos = -1, _kpos = -1;
+  for (int i = 0; i < 64; i++)
+    if (board[i] == wK)
+      _Kpos = i;
+    else if (board[i] == bK)
+      _kpos = i;
+  assert(_Kpos == Kpos);
+  assert(_kpos == kpos);
 }
 void Board::unmake_move(Move& move) {
   // restore current aspects
@@ -182,8 +182,7 @@ void Board::unmake_move(Move& move) {
 
   // update board
   Piece captured = board[move.from];
-  board[move.from] =
-      move.promotion == Empty ? board[move.to] : static_cast<Piece>(-turn * wP);
+  board[move.from] = move.promotion == Empty ? board[move.to] : Piece(-turn);
   board[move.to] = move.captured;
   move.captured = captured;
 
@@ -198,11 +197,21 @@ void Board::unmake_move(Move& move) {
       board[56] = wR, board[59] = Empty;
   } else if (move.enpassant) {  // add pawn when enpassant
     int rel_N = turn * N;
-    board[move.to + rel_N] = static_cast<Piece>(turn * wP);  // TODO:verify
+    board[move.to + rel_N] = Piece(turn * wP);  // TODO:verify
   }
   change_turn();
 
   moves--;
+
+  // debug
+  int _Kpos = -1, _kpos = -1;
+  for (int i = 0; i < 64; i++)
+    if (board[i] == wK)
+      _Kpos = i;
+    else if (board[i] == bK)
+      _kpos = i;
+  assert(_Kpos == Kpos);
+  assert(_kpos == kpos);
 }
 
 bool Board::load_fen(string fen) {
@@ -246,6 +255,7 @@ bool Board::load_fen(string fen) {
   }
   if (~enpassant_sq_idx)
     enpassant_sq_idx = sq2idx(enpassant_sq[0], enpassant_sq[1]);
+  Kpos = kpos = 64;  // invalid
   for (int i = 0; i < 64; i++)
     if (board[i] == wK)
       Kpos = i;
@@ -297,7 +307,7 @@ string Board::to_uci(Move move) {
 }
 
 string Board::to_san(Move move) {
-  Piece piece = static_cast<Piece>(abs(board[move.from]));
+  Piece piece = Piece(abs(board[move.from]));
   string san;
   san.reserve(5);
   if (move.castling) {

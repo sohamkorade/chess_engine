@@ -1,6 +1,7 @@
 #pragma once
 
 #include "board.hpp"
+#include "movegen.hpp"
 #include "types.hpp"
 
 struct TTEntry {  // transposition table entry

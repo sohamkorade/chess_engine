@@ -36,8 +36,8 @@ void display_piece(int sq, Piece piece) {
 void generate_move_hints() {
   Player actual_turn = g.board.turn;
   if (thinking) g.board.change_turn();
-  moves = thinking ? g.board.generate_legal_moves()
-                   : g.board.generate_pseudo_moves();
+  moves =
+      thinking ? generate_legal_moves(g.board) : generate_pseudo_moves(g.board);
   valid_sqs.clear();
   valid_capture_sqs.clear();
   for (auto &move : moves)
@@ -86,8 +86,9 @@ void update_board() {
       gtk_widget_add_css_class(squares[i], "valid_capture_sq");
   }
   int K_pos = g.board.turn == White ? g.board.Kpos : g.board.kpos;
-  if (~K_pos && (g.board.turn == White ? g.board.is_in_threat<White>(K_pos)
-                                       : g.board.is_in_threat<Black>(K_pos))) {
+  if (~K_pos &&
+      (g.board.turn == White ? is_in_threat<White>(g.board.board, K_pos)
+                             : is_in_threat<Black>(g.board.board, K_pos))) {
     if (board_flipped) K_pos = 63 - K_pos;
     gtk_widget_add_css_class(squares[K_pos], "check_sq");
   }
@@ -186,7 +187,7 @@ void computer_move() {
 }
 
 void make_legal_move(Move m) {
-  for (auto &move : g.board.generate_legal_moves())
+  for (auto &move : generate_legal_moves(g.board))
     if (move.from == m.from && move.to == m.to) {
       make_move(m);
       break;
