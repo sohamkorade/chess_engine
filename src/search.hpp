@@ -12,7 +12,7 @@ struct TTEntry {  // transposition table entry
   Move best_move;
 };
 
-class AI {
+class Search {
  public:
   Board board;
   int wtime = 30000, btime = 30000, winc = 0, binc = 0;
@@ -25,7 +25,7 @@ class AI {
 
   string debug = "";
 
-  AI(Board &board);
+  Search(Board &board);
   pair<Move, int> search(multiset<uint64_t> &transpositions);
   void set_clock(int _wtime, int _btime, int _winc, int _binc);
   int print_eval();

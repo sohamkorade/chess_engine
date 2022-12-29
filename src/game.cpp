@@ -69,7 +69,7 @@ Move Game::random_move() {
 
 pair<Move, int> Game::ai_move() {
   Board temp = board;
-  AI ai(temp);
+  Search ai(temp);
   // ai.set_clock(10 * 60 * 1000, 10 * 60 * 1000, 0, 0);
   ai.search_type = Time_per_move;
   ai.mtime = 3000;

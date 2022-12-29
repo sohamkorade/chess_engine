@@ -1,4 +1,4 @@
-FLAGS = @g++ -Wall -Ofast -pg -flto
+FLAGS = @g++ -Wall -Ofast
 
 GIT_SHA = $(shell git rev-parse --short HEAD 2>/dev/null)
 TIMESTAMP = $(shell date +%Y%m%d_%H%M)
@@ -16,16 +16,16 @@ archive:
 	@cp gui ../archive/gui_$(TIMESTAMP)_$(GIT_SHA)
 
 alll:
-	$(FLAGS) -o main main.cpp game.cpp board.cpp movegen.cpp ai.cpp `pkg-config --cflags --libs gtk4`
-	$(FLAGS) -o runtest runtest.cpp game.cpp board.cpp movegen.cpp ai.cpp `pkg-config --cflags --libs gtk4`
-	$(FLAGS) -o gui gui.cpp game.cpp board.cpp movegen.cpp ai.cpp `pkg-config --cflags --libs gtk4`
+	$(FLAGS) -o main main.cpp game.cpp board.cpp movegen.cpp search.cpp `pkg-config --cflags --libs gtk4`
+	$(FLAGS) -o runtest runtest.cpp game.cpp board.cpp movegen.cpp search.cpp `pkg-config --cflags --libs gtk4`
+	$(FLAGS) -o gui gui.cpp game.cpp board.cpp movegen.cpp search.cpp `pkg-config --cflags --libs gtk4`
 
-main: main.o game.o board.o movegen.o ai.o
-	$(FLAGS) -o main main.o game.o board.o movegen.o ai.o `pkg-config --cflags --libs gtk4`
-runtest: runtest.o board.o movegen.o ai.o
-	$(FLAGS) -o runtest runtest.o board.o movegen.o ai.o `pkg-config --cflags --libs gtk4`
-gui: gui.o board.o movegen.o game.o ai.o
-	$(FLAGS) -o gui gui.o board.o movegen.o game.o ai.o `pkg-config --cflags --libs gtk4`
+main: main.o game.o board.o movegen.o search.o
+	$(FLAGS) -o main main.o game.o board.o movegen.o search.o `pkg-config --cflags --libs gtk4`
+runtest: runtest.o board.o movegen.o search.o
+	$(FLAGS) -o runtest runtest.o board.o movegen.o search.o `pkg-config --cflags --libs gtk4`
+gui: gui.o board.o movegen.o game.o search.o
+	$(FLAGS) -o gui gui.o board.o movegen.o game.o search.o `pkg-config --cflags --libs gtk4`
 clean: cleano
 	rm main runtest gui
 cleano:
@@ -41,7 +41,7 @@ movegen.o: movegen.cpp
 	$(FLAGS) -c movegen.cpp
 runtest.o: runtest.cpp
 	$(FLAGS) -c runtest.cpp -o runtest.o 
-ai.o: ai.cpp
-	$(FLAGS) -c ai.cpp `pkg-config --cflags --libs gtk4`
+search.o: search.cpp
+	$(FLAGS) -c search.cpp `pkg-config --cflags --libs gtk4`
 gui.o: gui.cpp
 	$(FLAGS) -c gui.cpp `pkg-config --cflags --libs gtk4`

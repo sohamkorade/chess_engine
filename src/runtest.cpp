@@ -2,8 +2,8 @@
 
 #include <cstring>
 
-#include "ai.hpp"
 #include "board.hpp"
+#include "search.hpp"
 
 multiset<uint64_t> transpositions;
 
@@ -69,7 +69,7 @@ int bestmove(int argc, char* argv[]) {
   if (argc > 1) filename = argv[1];
   ifstream epd(filename);
   Board b;
-  AI ai(b);
+  Search ai(b);
   ai.set_clock(50 * 10000, 50 * 10000, 0, 0);
   // ai.max_depth = 3;
   string line;
@@ -124,7 +124,7 @@ int mate(int argc, char* argv[]) {
   if (argc > 1) filename = argv[1];
   ifstream epd(filename);
   Board board1;
-  AI ai(board1);
+  Search ai(board1);
   auto& b = ai.board;
   ai.search_type = Mate;
 

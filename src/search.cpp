@@ -1,34 +1,19 @@
-#include "ai.hpp"
+#include "search.hpp"
 
 #include "knowledge.hpp"
 
 const int MateScore = 1000000;
 
-int piece_val[13] = {};
+Search::Search(Board& _board) : board(_board) { init_piece_val(); }
 
-AI::AI(Board& _board) : board(_board) {
-  piece_val[wK + 6] = 10000;
-  piece_val[wQ + 6] = 900;
-  piece_val[wR + 6] = 500;
-  piece_val[wB + 6] = 300;
-  piece_val[wN + 6] = 250;
-  piece_val[wP + 6] = 100;
-  piece_val[bK + 6] = -10000;
-  piece_val[bQ + 6] = -900;
-  piece_val[bR + 6] = -500;
-  piece_val[bB + 6] = -300;
-  piece_val[bN + 6] = -250;
-  piece_val[bP + 6] = -100;
-}
-
-void AI::set_clock(int _wtime, int _btime, int _winc, int _binc) {
+void Search::set_clock(int _wtime, int _btime, int _winc, int _binc) {
   wtime = _wtime;
   btime = _btime;
   winc = _winc;
   binc = _binc;
 }
 
-pair<Move, int> AI::search(multiset<uint64_t>& transpositions) {
+pair<Move, int> Search::search(multiset<uint64_t>& transpositions) {
   searching = true;
   auto movelist = iterative_search();
   searching = false;
@@ -70,7 +55,7 @@ void print_score(int score) {
     cout << " score mate " << mate;
 }
 
-vector<pair<int, Move>> AI::iterative_search() {
+vector<pair<int, Move>> Search::iterative_search() {
   vector<pair<int, Move>> bestmoves, tempmoves;
   // Move bestmove;
   // int bestscore = -1e8;
@@ -140,7 +125,7 @@ vector<pair<int, Move>> AI::iterative_search() {
       }
     }
 
-    int mate_score = -MateScore;
+    // int mate_score = -MateScore;
 
     for (auto& score_move : legalmoves) {
       // cout << "searching move: " << board.to_san(score_move.second)
@@ -178,7 +163,7 @@ vector<pair<int, Move>> AI::iterative_search() {
         }
       score_move.first = score;
 
-      if (get_mate_score(score) > 0) mate_score = score;
+      // if (get_mate_score(score) > 0) mate_score = score;
 
       // ofstream log("log.txt", std::ios_base::app);
       // log << board.to_san(move) << " = " << score << "\n\n";
@@ -224,7 +209,7 @@ vector<pair<int, Move>> AI::iterative_search() {
   return bestmoves;
 }
 
-int AI::print_eval() {
+int Search::print_eval() {
   int material_score = 0;
   int pst_score = 0;
   int queens = 0;
@@ -257,7 +242,7 @@ int AI::print_eval() {
   return material_score + pst_score;
 }
 
-inline int AI::eval() {
+inline int Search::eval() {
   int material_score = 0;
   int pst_score = 0;
   int mobility_score = 0;
@@ -291,7 +276,7 @@ inline int AI::eval() {
   return material_score + pst_score + mobility_score;
 }
 
-int AI::negamax(int depth) {
+int Search::negamax(int depth) {
   if (depth == 0) return eval() * board.turn;
   int bestscore = -MateScore;
   auto legals = generate_legal_moves(board);
@@ -309,7 +294,7 @@ int AI::negamax(int depth) {
 
 int reduction(int depth, int moves) { return 1; }
 
-int AI::alphabeta(int depth, int alpha, int beta) {
+int Search::alphabeta(int depth, int alpha, int beta) {
   int extra_depth = 0;
   bool checked = is_in_check(board, board.turn);
   if (checked) extra_depth++;
@@ -326,7 +311,8 @@ int AI::alphabeta(int depth, int alpha, int beta) {
 
   // if (legals.size() == 1) return alpha;
 
-  int moves = 0, late_moves = legals.size() / 2 + 1;
+  int moves = 0;
+  // int late_moves = legals.size() / 2 + 1;
   int score;
 
   // null move pruning
@@ -391,7 +377,7 @@ int AI::alphabeta(int depth, int alpha, int beta) {
   return bestscore;
 }
 
-int AI::quiesce(int depth, int alpha, int beta) {
+int Search::quiesce(int depth, int alpha, int beta) {
   // while (g_main_context_pending(0)) g_main_context_iteration(0, 0);
 
   int pat = eval() * board.turn;
@@ -421,7 +407,7 @@ int AI::quiesce(int depth, int alpha, int beta) {
   return alpha;
 }
 
-void AI::prune_TT(int age) {
+void Search::prune_TT(int age) {
   for (auto it = TT.begin(); it != TT.end();) {
     if (it->second.depth < age)
       it = TT.erase(it);

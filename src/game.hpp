@@ -1,7 +1,7 @@
 #pragma once
 
-#include "ai.hpp"
 #include "board.hpp"
+#include "search.hpp"
 
 class Game {
  public:

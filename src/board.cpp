@@ -157,15 +157,15 @@ void Board::make_move(Move& move) {
 
   moves++;
 
-  // debug
-  int _Kpos = -1, _kpos = -1;
-  for (int i = 0; i < 64; i++)
-    if (board[i] == wK)
-      _Kpos = i;
-    else if (board[i] == bK)
-      _kpos = i;
-  assert(_Kpos == Kpos);
-  assert(_kpos == kpos);
+  // // debug
+  // int _Kpos = -1, _kpos = -1;
+  // for (int i = 0; i < 64; i++)
+  //   if (board[i] == wK)
+  //     _Kpos = i;
+  //   else if (board[i] == bK)
+  //     _kpos = i;
+  // assert(_Kpos == Kpos);
+  // assert(_kpos == kpos);
 }
 void Board::unmake_move(Move& move) {
   // restore current aspects
@@ -203,15 +203,15 @@ void Board::unmake_move(Move& move) {
 
   moves--;
 
-  // debug
-  int _Kpos = -1, _kpos = -1;
-  for (int i = 0; i < 64; i++)
-    if (board[i] == wK)
-      _Kpos = i;
-    else if (board[i] == bK)
-      _kpos = i;
-  assert(_Kpos == Kpos);
-  assert(_kpos == kpos);
+  // // debug
+  // int _Kpos = -1, _kpos = -1;
+  // for (int i = 0; i < 64; i++)
+  //   if (board[i] == wK)
+  //     _Kpos = i;
+  //   else if (board[i] == bK)
+  //     _kpos = i;
+  // assert(_Kpos == Kpos);
+  // assert(_kpos == kpos);
 }
 
 bool Board::load_fen(string fen) {

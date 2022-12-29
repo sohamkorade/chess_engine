@@ -99,3 +99,20 @@ const char pst_cd[64] = {
     3, 2, 2, 2, 2, 2, 2, 3,  //
     3, 3, 3, 3, 3, 3, 3, 3   //
 };
+
+int piece_val[13] = {};
+
+void init_piece_val() {
+  piece_val[wK + 6] = 10000;
+  piece_val[wQ + 6] = 900;
+  piece_val[wR + 6] = 500;
+  piece_val[wB + 6] = 300;
+  piece_val[wN + 6] = 250;
+  piece_val[wP + 6] = 100;
+  piece_val[bK + 6] = -10000;
+  piece_val[bQ + 6] = -900;
+  piece_val[bR + 6] = -500;
+  piece_val[bB + 6] = -300;
+  piece_val[bN + 6] = -250;
+  piece_val[bP + 6] = -100;
+}

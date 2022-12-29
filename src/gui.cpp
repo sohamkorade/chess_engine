@@ -200,7 +200,7 @@ void make_move(Move m) {
   valid_capture_sqs.clear();
   if (!g.make_move(m)) return;
   update_gui();
-  AI ai(g.board);
+  Search ai(g.board);
   ai.print_eval();
   if (g.result != Undecided) return;
   computer_move();

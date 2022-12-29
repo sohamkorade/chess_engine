@@ -1,8 +1,8 @@
 
 
-#include "ai.hpp"
 #include "board.hpp"
 #include "game.hpp"
+#include "search.hpp"
 
 bool debug_mode = false;
 thread ai_thread;
@@ -60,7 +60,7 @@ void test_navigation() {
 void uci() {
   multiset<uint64_t> transpositions;
   Board board1;
-  AI ai(board1);
+  Search ai(board1);
   auto& board = ai.board;
   string line, token;
 
