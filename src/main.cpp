@@ -1,5 +1,3 @@
-
-
 #include "board.hpp"
 #include "game.hpp"
 #include "search.hpp"
@@ -8,60 +6,20 @@ bool debug_mode = false;
 thread ai_thread;
 
 void parse_and_make_moves(istringstream& iss, Board& board,
-                          multiset<uint64_t>& transpositions) {
+                          multiset<uint64_t>& repetitions) {
   string token;
   while (iss >> token) {
     if (make_move_if_legal(board, token))
-      transpositions.insert(board.zobrist_hash());
+      repetitions.insert(board.zobrist_hash());
     else
       break;
   }
 }
 
-void test_navigation() {
-  Game g;
-  // g.board.load_fen("8/8/3k4/8/8/3KP1r1/8/8 w - - 0 1");
-  g.board.print();
-
-  string cmd;
-  while (cin >> cmd) {
-    if (cmd == "list" || cmd == "l")
-      g.print_movelist();
-
-    else if (cmd == "rand" || cmd == "r") {
-      g.random_move();
-    } else if (cmd == "random") {
-      int times;
-      cin >> times;
-      for (int i = 0; i < times; i++) g.random_move();
-    } else if (cmd == "prev" || cmd == "p")
-      g.prev();
-    else if (cmd == "next" || cmd == "n")
-      g.next();
-    else if (cmd == "start" || cmd == "s")
-      g.seek(0);
-    else if (cmd == "end" || cmd == "e")
-      g.seek(g.end);
-    else if (cmd == "seek") {
-      int pos;
-      cin >> pos;
-      g.seek(pos);
-    } else if (cmd == "turn") {
-      g.board.change_turn();
-    } else if (cmd == "pgn") {
-      g.print_pgn();
-    } else if (cmd == "quit" || cmd == "q")
-      break;
-    g.board.print();
-    cout << "ply " << g.ply << " end " << g.end << endl;
-  }
-}
-
-void uci() {
-  multiset<uint64_t> transpositions;
-  Board board1;
-  Search ai(board1);
+void uci_loop() {
+  Search ai;
   auto& board = ai.board;
+  auto& repetitions = ai.repetitions;
   string line, token;
 
   while (getline(cin, line)) {
@@ -76,7 +34,7 @@ void uci() {
     } else if (token == "ucinewgame") {
     } else if (token == "position") {
       iss >> token;
-      transpositions.clear();
+      repetitions.clear();
       if (token == "fen") {
         string fen;
         for (int i = 0; i < 6; i++) {
@@ -88,14 +46,14 @@ void uci() {
         // cout << "--\n{" << fen << "}\n--\n";
         board.load_fen(fen);
       } else if (token == "startpos") {
-        transpositions.clear();
+        repetitions.clear();
         board.load_startpos();
       }
       iss >> token;
-      if (token == "moves") parse_and_make_moves(iss, board, transpositions);
+      if (token == "moves") parse_and_make_moves(iss, board, repetitions);
     } else if (token == "go") {
       // example: go wtime 56329 btime 86370 winc 1000 binc 1000
-      transpositions.clear();
+      repetitions.clear();
       ai.search_type = Time_per_game;
       ai.set_clock(30000, 30000, 0, 0);
       ai.max_depth = 100;
@@ -127,7 +85,7 @@ void uci() {
           board.load_startpos();
           iss >> token;
           if (token == "moves")
-            parse_and_make_moves(iss, board, transpositions);
+            parse_and_make_moves(iss, board, repetitions);
         } else if (token == "perft") {
           iss >> token;
           if (!ai.searching) {
@@ -138,7 +96,7 @@ void uci() {
       }
       if (!ai.searching) {
         if (ai_thread.joinable()) ai_thread.join();
-        ai_thread = thread([&]() { ai.search(transpositions); });
+        ai_thread = thread([&]() { ai.search(); });
       }
     } else if (token == "stop") {
       ai.searching = false;
@@ -189,6 +147,8 @@ void uci() {
       ai.print_eval();
     } else if (token == "isincheck") {
       cout << is_in_check(board, board.turn) << endl;
+    } else if (token == "turn") {
+      board.change_turn();
     } else {
       cout << "Invalid command: " << line << endl;
     }
@@ -199,7 +159,6 @@ void uci() {
 
 int main() {
   srand(time(0));
-  // test_navigation();
-  init_zobrist();
-  uci();
+  zobrist_init();
+  uci_loop();
 }

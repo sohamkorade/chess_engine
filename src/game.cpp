@@ -1,3 +1,5 @@
+// TODO: cleanup
+
 #include "game.hpp"
 
 Game::Game() { new_game(); }
@@ -22,10 +24,10 @@ bool Game::make_move(Move m) {
     if (it != alive.end()) alive.erase(it);
   }
   if (m.captured != Empty || board.board[m.to] == bP || board.board[m.to] == wP)
-    transpositions.clear();
+    repetitions.clear();
 
   ply++, end++;
-  transpositions.insert(board.zobrist_hash());
+  repetitions.insert(board.zobrist_hash());
   result = get_result();
   return true;
 }
@@ -68,12 +70,13 @@ Move Game::random_move() {
 }
 
 pair<Move, int> Game::ai_move() {
-  Board temp = board;
-  Search ai(temp);
+  Search ai;
+  ai.board = board;
   // ai.set_clock(10 * 60 * 1000, 10 * 60 * 1000, 0, 0);
   ai.search_type = Time_per_move;
   ai.mtime = 3000;
-  return ai.search(transpositions);
+  ai.repetitions = repetitions;
+  return ai.search();
 }
 
 Status Game::get_result() {
@@ -106,7 +109,7 @@ Status Game::get_result() {
   //   return Draw;
 
   // repetition
-  if (transpositions.count(board.zobrist_hash()) == 3) return Draw;
+  if (repetitions.count(board.zobrist_hash()) == 3) return Draw;
 
   return Undecided;
 }
@@ -117,7 +120,7 @@ void Game::new_game() {
   board.load_startpos();
   update_alive();
   result = Undecided;
-  transpositions.clear();
+  repetitions.clear();
 }
 
 bool Game::load_fen(string fen) {

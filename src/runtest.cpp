@@ -5,8 +5,6 @@
 #include "board.hpp"
 #include "search.hpp"
 
-multiset<uint64_t> transpositions;
-
 int perft(int argc, char* argv[]) {
   // cout.setstate(ios_base::failbit);
   string filename = "../tests/perftsuite.epd";
@@ -68,8 +66,8 @@ int bestmove(int argc, char* argv[]) {
   string filename = "../tests/bestmovetest.epd";
   if (argc > 1) filename = argv[1];
   ifstream epd(filename);
-  Board b;
-  Search ai(b);
+  Search ai;
+  Board& b = ai.board;
   ai.set_clock(50 * 10000, 50 * 10000, 0, 0);
   // ai.max_depth = 3;
   string line;
@@ -93,7 +91,7 @@ int bestmove(int argc, char* argv[]) {
     cout << "\e[35m";
     ai.board = b;
     auto begint = chrono::high_resolution_clock::now();
-    string found = b.to_san(ai.search(transpositions).first);
+    string found = b.to_san(ai.search().first);
     auto endt = chrono::high_resolution_clock::now();
     cout << "\e[0m";
 
@@ -123,8 +121,7 @@ int mate(int argc, char* argv[]) {
   string filename = "../tests/mates.epd";
   if (argc > 1) filename = argv[1];
   ifstream epd(filename);
-  Board board1;
-  Search ai(board1);
+  Search ai;
   auto& b = ai.board;
   ai.search_type = Mate;
 
@@ -148,7 +145,7 @@ int mate(int argc, char* argv[]) {
     cout << "[" << i++ << "] in: " << line << endl;
     // cout.setstate(ios_base::failbit);
     auto begint = chrono::high_resolution_clock::now();
-    Move bestmove = ai.search(transpositions).first;
+    Move bestmove = ai.search().first;
     auto endt = chrono::high_resolution_clock::now();
 
     auto elapsed =

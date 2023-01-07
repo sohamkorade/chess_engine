@@ -10,7 +10,7 @@ class Game {
   int ply = 0, end = 0;
   Status result = Undecided;
   multiset<Piece> white_alive, black_alive;
-  multiset<uint64_t> transpositions;
+  multiset<uint64_t> repetitions;
 
   Game();
   bool make_move(string m);

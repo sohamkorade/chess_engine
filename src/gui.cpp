@@ -1,3 +1,10 @@
+// TODO:
+// - properly integrate with engine!!
+// - drag and drop pieces
+// - show what computer is thinking
+// - show evaluation bar
+// - show move history
+
 #include <gtk/gtk.h>
 
 #include "game.hpp"
@@ -21,14 +28,13 @@ GtkWidget *white_human, *white_randommover, *white_ai, *black_human,
 void computer_move();
 void make_move(Move m);
 
-void msg(string s) {
+void show_statusbar_msg(string s) {
   gtk_statusbar_pop(GTK_STATUSBAR(statusbar), 0);
   gtk_statusbar_push(GTK_STATUSBAR(statusbar), 0, s.c_str());
 }
 
-void display_piece(int sq, Piece piece) {
+void update_piece(int sq, Piece piece) {
   gtk_widget_set_name(squares[sq], "");
-  // if (piece != '.')
   gtk_widget_set_name(squares[sq],
                       string("piece_").append(1, piece2char(piece)).c_str());
 }
@@ -36,6 +42,7 @@ void display_piece(int sq, Piece piece) {
 void generate_move_hints() {
   Player actual_turn = g.board.turn;
   if (thinking) g.board.change_turn();
+  // TODO: generate all possible moves even non-existent pawn captures
   moves =
       thinking ? generate_legal_moves(g.board) : generate_pseudo_moves(g.board);
   valid_sqs.clear();
@@ -68,11 +75,11 @@ void update_board() {
       premove.from = 63 - premove.from;
       premove.to = 63 - premove.to;
     }
-    msg("Moved " + g.board.to_san(last));
+    show_statusbar_msg("Moved " + g.board.to_san(last));
   } else
-    msg("");
+    show_statusbar_msg("");
   for (int i = 0; i < 64; i++) {
-    if (!promotions.count(i)) display_piece(i, board[i]);
+    if (!promotions.count(i)) update_piece(i, board[i]);
     for (auto &c : {"selected_sq", "valid_sq", "valid_capture_sq", "check_sq",
                     "premove_sq"})
       gtk_widget_remove_css_class(squares[i], c);
@@ -132,6 +139,8 @@ void update_gui() {
   // cout << g.result << endl;
 }
 
+// button events
+
 void first_click() { g.seek(0), update_gui(); }
 void prev_click() { g.prev(), update_gui(); }
 void next_click() { g.next(), update_gui(); }
@@ -152,23 +161,24 @@ void newgame_click() {
   update_gui();
 }
 void stop_think_click() {
+  // TODO: make elegant
   stop_thinking = !stop_thinking;
   gtk_button_set_label(GTK_BUTTON(stop_think), stop_thinking
-                                                   ? "Disable computer moves"
-                                                   : "Enable computer moves");
-  computer_move();
+                                                   ? "Enable computer moves"
+                                                   : "Disable computer moves");
+  if (!stop_thinking) computer_move();
 }
 void fen_apply_click() {
   if (g.load_fen(gtk_entry_buffer_get_text(GTK_ENTRY_BUFFER(fen_entry_buffer))))
-    msg("FEN loaded.");
+    show_statusbar_msg("FEN loaded.");
   else
-    msg("Bad FEN.");
+    show_statusbar_msg("Bad FEN.");
   update_gui();
 }
 
 void computer_move() {
   thinking = true;
-  msg("Thinking...");
+  show_statusbar_msg("Thinking...");
   gtk_progress_bar_pulse(GTK_PROGRESS_BAR(eval_bar));
   if (!stop_thinking) {
     if (gtk_check_button_get_active(GTK_CHECK_BUTTON(
@@ -200,7 +210,8 @@ void make_move(Move m) {
   valid_capture_sqs.clear();
   if (!g.make_move(m)) return;
   update_gui();
-  Search ai(g.board);
+  Search ai;
+  ai.board = g.board;
   ai.print_eval();
   if (g.result != Undecided) return;
   computer_move();
@@ -227,7 +238,7 @@ void move_intent(int sq) {
       if (board_flipped) temp_sq = 63 - temp_sq;
       promotions.insert({temp_sq, valids[i]});
       gtk_widget_add_css_class(squares[temp_sq], "promotion");
-      display_piece(temp_sq, valids[i].promotion);
+      update_piece(temp_sq, valids[i].promotion);
     }
     gtk_widget_add_css_class(chess_board_grid, "promotion");
     return;
@@ -395,7 +406,7 @@ GtkWidget *navigation_buttons() {
   return grid;
 }
 
-static void activate(GtkApplication *app, gpointer user_data) {
+GtkWidget *create_grid() {
   GtkWidget *grid = gtk_grid_new();
   gtk_grid_attach(GTK_GRID(grid), chess_board(), 1, 1, 1, 1);
   gtk_grid_attach(GTK_GRID(grid), navigation_buttons(), 2, 1, 1, 1);
@@ -413,10 +424,15 @@ static void activate(GtkApplication *app, gpointer user_data) {
   g_signal_connect(fen_apply, "clicked", G_CALLBACK(fen_apply_click), NULL);
   statusbar = gtk_statusbar_new();
   gtk_grid_attach(GTK_GRID(grid), statusbar, 1, 3, 2, 1);
+  return grid;
+}
 
+static void activate(GtkApplication *app, gpointer user_data) {
   GtkWidget *window = gtk_application_window_new(app);
   gtk_window_set_title(GTK_WINDOW(window), "Chess by Soham");
   gtk_window_set_default_size(GTK_WINDOW(window), 400, 400);
+  gtk_window_set_icon_name(GTK_WINDOW(window), "chess");
+  GtkWidget *grid = create_grid();
   gtk_window_set_child(GTK_WINDOW(window), grid);
 
   GtkCssProvider *cssProvider = gtk_css_provider_new();
@@ -424,10 +440,7 @@ static void activate(GtkApplication *app, gpointer user_data) {
   gtk_style_context_add_provider_for_display(gtk_widget_get_display(window),
                                              GTK_STYLE_PROVIDER(cssProvider),
                                              GTK_STYLE_PROVIDER_PRIORITY_USER);
-
   gtk_window_present(GTK_WINDOW(window));
-  // g.board.load_fen(
-  //     "rnbqkbnr/pppppppp/8/8/2B5/5Q2/PPPPPPPP/RNB1K1NR b KQkq - 0 1");
   update_gui();
 }
 

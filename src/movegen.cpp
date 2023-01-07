@@ -32,10 +32,6 @@ inline void slides(Position& pos, vector<Move>& movelist, int sq) {
 
 template <Player turn>
 bool is_in_threat(Position& pos, int sq) {
-  // for (auto& move : generate_pseudo_moves())
-  //   if (move.to == sq) return true;
-  // return false;
-
   // generate and check reverse threats from sq
   constexpr Piece oppK = Piece(-turn * wK);
   constexpr Piece oppP = Piece(-turn * wP);
@@ -46,6 +42,7 @@ bool is_in_threat(Position& pos, int sq) {
 
   // for debugging
   // #define true (printf("%d\n", __LINE__) || true)
+
   // check for king threats
   if (is_occupied<S, oppK>(pos, sq)) return true;
   if (is_occupied<N, oppK>(pos, sq)) return true;

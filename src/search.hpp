@@ -19,17 +19,15 @@ class Search {
   int mtime = 1000;  // move time
   int max_depth = 100;
   SearchType search_type = Time_per_game;
-  unordered_map<uint64_t, TTEntry> TT;  // transposition table
-  vector<Move> PV;                      // principal variation
   atomic<bool> searching{false};
+  multiset<uint64_t> repetitions;  // for checking repetition
 
   string debug = "";
 
-  Search(Board &board);
-  pair<Move, int> search(multiset<uint64_t> &transpositions);
+  Search();
+  pair<Move, int> search();
   void set_clock(int _wtime, int _btime, int _winc, int _binc);
   int print_eval();
-  void prune_TT(int age);  // prune TT entries older than age
 
  protected:
   int eval();

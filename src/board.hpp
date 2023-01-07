@@ -4,7 +4,7 @@
 
 // https://www.chessprogramming.org/Zobrist_Hashing
 
-void init_zobrist();
+void zobrist_init();
 
 class Move {
  public:
@@ -50,7 +50,6 @@ class Board {
   inline bool empty(int idx);
   vector<string> list_san(vector<Move> movelist);
 
-  string pos_hash();
   uint64_t zobrist_hash();
 };
 
@@ -68,15 +67,6 @@ inline bool isnt_H(int idx) { return idx % 8 != 7; }
 inline bool isnt_A(int idx) { return idx % 8 != 0; }
 inline bool isnt_8(int idx) { return idx / 8 != 0; }
 inline bool isnt_1(int idx) { return idx / 8 != 7; }
-
-inline bool westwards(Direction dir) {
-  // return dir == NW || dir == SW || dir == W;
-  return (dir & 7) == 7;  // &7 is the same as %8
-}
-inline bool eastwards(Direction dir) {
-  // return dir == NE || dir == SE || dir == E;
-  return (dir & 7) == 1;  // &7 is the same as %8
-}
 
 Piece char2piece(char p);
 char piece2char(Piece p);
@@ -100,21 +90,21 @@ constexpr bool is_safe(int idx) {
     return isnt_H(idx) && isnt_1(idx);
   else if constexpr (dir == SW)
     return isnt_A(idx) && isnt_1(idx);
-  else if constexpr (dir == N + NE)
+  else if constexpr (dir == NNE)
     return isnt_8(idx) && isnt_H(idx) && rank > 1;
-  else if constexpr (dir == N + NW)
+  else if constexpr (dir == NNW)
     return isnt_8(idx) && isnt_A(idx) && rank > 1;
-  else if constexpr (dir == S + SE)
+  else if constexpr (dir == SSE)
     return isnt_1(idx) && isnt_H(idx) && rank < 6;
-  else if constexpr (dir == S + SW)
+  else if constexpr (dir == SSW)
     return isnt_1(idx) && isnt_A(idx) && rank < 6;
-  else if constexpr (dir == E + NE)
+  else if constexpr (dir == ENE)
     return isnt_H(idx) && isnt_8(idx) && file < 6;
-  else if constexpr (dir == E + SE)
+  else if constexpr (dir == ESE)
     return isnt_H(idx) && isnt_1(idx) && file < 6;
-  else if constexpr (dir == W + NW)
+  else if constexpr (dir == WNW)
     return isnt_A(idx) && isnt_8(idx) && file > 1;
-  else if constexpr (dir == W + SW)
+  else if constexpr (dir == WSW)
     return isnt_A(idx) && isnt_1(idx) && file > 1;
   else
     return true;

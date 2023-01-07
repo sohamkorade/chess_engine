@@ -96,6 +96,7 @@ void Board::make_move(Move& move) {
   // move.moves = moves;
 
   // update half-move clock
+  // capture or pawn move resets clock
   if (board[move.to] != Empty || abs(board[move.from]) == wP)
     fifty = 0;
   else
@@ -301,7 +302,7 @@ string Board::to_fen() {
 string Board::to_uci(Move move) {
   string uci = idx2sq(move.from) + idx2sq(move.to);
   if (move.promotion != Empty)
-    return uci + piece2char(move.promotion);
+    return uci + piece2char(move.promotion);  // TODO: check letter case
   else
     return uci;
 }
@@ -310,6 +311,7 @@ string Board::to_san(Move move) {
   Piece piece = Piece(abs(board[move.from]));
   string san;
   san.reserve(5);
+  // TODO: maybe simplify
   if (move.castling) {
     if ((move.from == 4 && move.to == 6) || (move.from == 60 && move.to == 62))
       san = "O-O";
@@ -334,34 +336,6 @@ void Board::load_startpos() {
   load_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
 }
 
-// Move Board::match_san(vector<Move> movelist, string san) {
-//   // TODO
-//   // int count = 0;
-//   // for (char c : {'+', '#', '-', '+'})
-//   //   san.erase(std::remove(san.begin(), san.end(), c), san.end());
-
-//   // for (auto& move : movelist) {
-//   //   if (move.to = 0)
-//   //     ;
-//   // }
-// }
-
-string Board::pos_hash() {
-  string fen = "";
-  fen.reserve(100);
-  for (auto& s : board) fen += piece2char(s);
-  fen += '|';
-  fen += (turn == White ? 'w' : 'b');
-  fen += '|';
-  if (castling_rights[0]) fen += 'K';
-  if (castling_rights[1]) fen += 'Q';
-  if (castling_rights[2]) fen += 'k';
-  if (castling_rights[3]) fen += 'q';
-  fen += '|';
-  fen += idx2sq(enpassant_sq_idx);
-  return fen;
-}
-
 uint64_t Board::zobrist_hash() {
   uint64_t hash = 0;
   for (int i = 0; i < 64; i++)
@@ -373,7 +347,7 @@ uint64_t Board::zobrist_hash() {
   return hash;
 }
 
-void init_zobrist() {
+void zobrist_init() {
   random_device rd;
   uniform_int_distribution<uint64_t> uni(0, UINT64_MAX);
 
