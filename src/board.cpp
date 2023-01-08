@@ -33,12 +33,6 @@ void Move::print() {
 
 Board::Board() { load_startpos(); }
 
-int Board::piece_color(int sq_idx) { return isupper(board[sq_idx]) ? 1 : -1; }
-int Board::sq_color(int sq_idx) {
-  return (sq_idx % 2 && (sq_idx / 8) % 2) ||
-         (sq_idx % 2 == 0 && (sq_idx / 8) % 2 == 0);
-}
-
 void Board::print(string sq, bool flipped) {
   if (sq.length() == 4)
     sq[0] = sq[2], sq[1] = sq[3];  // extract destination square from move

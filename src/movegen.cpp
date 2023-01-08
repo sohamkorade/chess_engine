@@ -138,18 +138,18 @@ inline void generate_promotions_and_ep(Board& board, vector<Move>& pseudo) {
 }
 
 template <Player turn>
-void generate_pawn_moves(Board& board, vector<Move>& pseudo, int sq) {
+void generate_pawn_moves(Position& pos, vector<Move>& pseudo, int sq) {
   const int rank = sq / 8;
   const int rel_rank = turn == White ? rank : 7 - rank;
 
   // capture NW and NE
-  only_capture<Direction(NW * turn)>(board.board, pseudo, sq);
-  only_capture<Direction(NE * turn)>(board.board, pseudo, sq);
+  only_capture<Direction(NW * turn)>(pos, pseudo, sq);
+  only_capture<Direction(NE * turn)>(pos, pseudo, sq);
 
   // push
-  if (only_move<Direction(N * turn)>(board.board, pseudo, sq))
+  if (only_move<Direction(N * turn)>(pos, pseudo, sq))
     // double push only if push succeeds
-    if (rel_rank == 6) only_move<Direction(NN * turn)>(board.board, pseudo, sq);
+    if (rel_rank == 6) only_move<Direction(NN * turn)>(pos, pseudo, sq);
 }
 
 template <Player turn>
@@ -245,33 +245,35 @@ vector<Move> generate_pseudo_moves(Board& board) {
   constexpr Piece rel_R = Piece(wR * turn);
   constexpr Piece rel_Q = Piece(wQ * turn);
 
+  auto& pos = board.board;
+
   for (int sq = 0; sq < 64; sq++) {
     const int rank = sq / 8;
     const int rel_rank = turn == White ? rank : 7 - rank;
-    const Piece p = board[sq];
-    if (p == rel_P && rel_rank != 1)
-      generate_pawn_moves<turn>(board, pseudo, sq);
+    const Piece p = pos[sq];
+    if (p == rel_P && rel_rank != 1)  // rank 2 is handled by promotions
+      generate_pawn_moves<turn>(pos, pseudo, sq);
     else if (p == rel_N) {
-      jump<NNW>(board.board, pseudo, sq);
-      jump<NNE>(board.board, pseudo, sq);
-      jump<WNW>(board.board, pseudo, sq);
-      jump<WSW>(board.board, pseudo, sq);
-      jump<ENE>(board.board, pseudo, sq);
-      jump<ESE>(board.board, pseudo, sq);
-      jump<SSW>(board.board, pseudo, sq);
-      jump<SSE>(board.board, pseudo, sq);
+      jump<NNW>(pos, pseudo, sq);
+      jump<NNE>(pos, pseudo, sq);
+      jump<WNW>(pos, pseudo, sq);
+      jump<WSW>(pos, pseudo, sq);
+      jump<ENE>(pos, pseudo, sq);
+      jump<ESE>(pos, pseudo, sq);
+      jump<SSW>(pos, pseudo, sq);
+      jump<SSE>(pos, pseudo, sq);
     }
     if (p == rel_B || p == rel_Q) {
-      slide<NW>(board.board, pseudo, sq);
-      slide<NE>(board.board, pseudo, sq);
-      slide<SW>(board.board, pseudo, sq);
-      slide<SE>(board.board, pseudo, sq);
+      slide<NW>(pos, pseudo, sq);
+      slide<NE>(pos, pseudo, sq);
+      slide<SW>(pos, pseudo, sq);
+      slide<SE>(pos, pseudo, sq);
     }
     if (p == rel_R || p == rel_Q) {
-      slide<N>(board.board, pseudo, sq);
-      slide<S>(board.board, pseudo, sq);
-      slide<E>(board.board, pseudo, sq);
-      slide<W>(board.board, pseudo, sq);
+      slide<N>(pos, pseudo, sq);
+      slide<S>(pos, pseudo, sq);
+      slide<E>(pos, pseudo, sq);
+      slide<W>(pos, pseudo, sq);
     }
   }
   return pseudo;
@@ -289,22 +291,22 @@ template <Player turn>
 bool is_legal(Board& board, Move& move) {
   bool legal = true;
   if (move.castling) {
-    // check if any squares that king moves to are threatened
-    auto threats = get_threats<Player(-turn)>(board);
+// check if any squares that king moves to are threatened
+
+// check unsafe square
+#define US(sq) is_in_threat<turn>(board.board, sq)
     if (  // white kingside castling
-        (move.from == 60 && move.to == 62 &&
-         (threats[60] || threats[61] || threats[62])) ||
+        (move.from == 60 && move.to == 62 && (US(60) || US(61) || US(62))) ||
         // black queenside castling
-        (move.from == 4 && move.to == 6 &&
-         (threats[4] || threats[5] || threats[6])) ||
+        (move.from == 4 && move.to == 6 && (US(4) || US(5) || US(6))) ||
         // white kingside castling
-        (move.from == 60 && move.to == 58 &&
-         (threats[60] || threats[59] || threats[58])) ||
+        (move.from == 60 && move.to == 58 && (US(60) || US(59) || US(58))) ||
         // black queenside castling
-        (move.from == 4 && move.to == 2 &&
-         (threats[4] || threats[3] || threats[2]))) {
+        (move.from == 4 && move.to == 2 && (US(4) || US(3) || US(2)))) {
       legal = false;
     }
+#undef US
+
   } else {
     // check if king is threatened
     board.make_move(move);

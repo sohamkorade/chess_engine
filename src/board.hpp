@@ -36,8 +36,7 @@ class Board {
 
   Board();
   constexpr Piece operator[](int i) { return board[i]; }
-  int piece_color(int sq_idx);
-  int sq_color(int sq_idx);
+  inline int piece_color(int sq_idx);
   void print(string sq = "", bool flipped = false);
   inline void change_turn();
   void make_move(Move& move);
@@ -100,4 +99,14 @@ constexpr bool is_safe(int idx) {
     if (file < 2) return false;
 
   return true;
+}
+
+inline int Board::piece_color(int sq_idx) {
+  if (board[sq_idx] == Empty) return 0;
+  return board[sq_idx] > 0 ? White : Black;
+}
+
+inline int sq_color(int sq_idx) {
+  return (sq_idx % 2 && (sq_idx / 8) % 2) ||
+         (sq_idx % 2 == 0 && (sq_idx / 8) % 2 == 0);
 }

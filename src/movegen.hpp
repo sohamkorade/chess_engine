@@ -20,6 +20,7 @@ template <Player turn>
 vector<Move> generate_legal_moves(Board& board);
 vector<Move> generate_legal_moves(Board& board);
 
+// not accurate
 template <Player turn>
 array<bool, 64> get_threats(Board& board) {
   array<bool, 64> threats{false};

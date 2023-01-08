@@ -219,3 +219,8 @@
 ## 8 Jan 2023
 - increased max node limit in perft tests
 - shocked to see test fail! new bug-hunt begins!!
+- bug:
+	- FEN: r3k2r/p1ppPpb1/1n2pnp1/1b2N3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R b KQkq - 0 2
+	- castling move generation
+	- I didn't check the case where the squares adjacent to the king are attacked by a pawn on the 7th rank
+	- fixed it by using the new `is_in_threat` function
