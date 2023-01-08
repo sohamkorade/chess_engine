@@ -31,8 +31,6 @@ void Move::print() {
        << endl;
 }
 
-Board::Board() { load_startpos(); }
-
 void Board::print(string sq, bool flipped) {
   if (sq.length() == 4)
     sq[0] = sq[2], sq[1] = sq[3];  // extract destination square from move
@@ -136,13 +134,13 @@ void Board::make_move(Move& move) {
   // piece
 
   if (move.castling) {  // move rook when castling
-    if (move.from == 4 && move.to == 6)
+    if (move.equals(4, 6))
       board[7] = Empty, board[5] = bR;
-    else if (move.from == 4 && move.to == 2)
+    else if (move.equals(4, 2))
       board[0] = Empty, board[3] = bR;
-    else if (move.from == 60 && move.to == 62)
+    else if (move.equals(60, 62))
       board[63] = Empty, board[61] = wR;
-    else if (move.from == 60 && move.to == 58)
+    else if (move.equals(60, 58))
       board[56] = Empty, board[59] = wR;
   } else if (move.enpassant) {  // remove pawn when enpassant
     int rel_S = turn * S;
@@ -182,17 +180,17 @@ void Board::unmake_move(Move& move) {
   move.captured = captured;
 
   if (move.castling) {  // move rook when castling
-    if (move.from == 4 && move.to == 6)
+    if (move.equals(4, 6))
       board[7] = bR, board[5] = Empty;
-    else if (move.from == 4 && move.to == 2)
+    else if (move.equals(4, 2))
       board[0] = bR, board[3] = Empty;
-    else if (move.from == 60 && move.to == 62)
+    else if (move.equals(60, 62))
       board[63] = wR, board[61] = Empty;
-    else if (move.from == 60 && move.to == 58)
+    else if (move.equals(60, 58))
       board[56] = wR, board[59] = Empty;
   } else if (move.enpassant) {  // add pawn when enpassant
     int rel_N = turn * N;
-    board[move.to + rel_N] = Piece(turn * wP);  // TODO:verify
+    board[move.to + rel_N] = Piece(turn * wP);
   }
   change_turn();
 
@@ -296,9 +294,8 @@ string Board::to_fen() {
 string Board::to_uci(Move move) {
   string uci = idx2sq(move.from) + idx2sq(move.to);
   if (move.promotion != Empty)
-    return uci + piece2char(move.promotion);  // TODO: check letter case
-  else
-    return uci;
+    uci += tolower(piece2char(move.promotion));  // promotion always lowercase
+  return uci;
 }
 
 string Board::to_san(Move move) {
@@ -307,10 +304,9 @@ string Board::to_san(Move move) {
   san.reserve(5);
   // TODO: maybe simplify
   if (move.castling) {
-    if ((move.from == 4 && move.to == 6) || (move.from == 60 && move.to == 62))
+    if (move.equals(4, 6) || move.equals(60, 62))
       san = "O-O";
-    else if ((move.from == 4 && move.to == 2) ||
-             (move.from == 60 && move.to == 58))
+    else if (move.equals(4, 2) || move.equals(60, 58))
       san = "O-O-O";
   } else {
     if (piece != wP && piece != Empty) san = piece2char(piece);
