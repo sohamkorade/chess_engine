@@ -4,7 +4,7 @@
 
 const int MateScore = 1000000;
 
-Search::Search() { init_piece_val(); }
+Search::Search() {}
 
 void Search::set_clock(int _wtime, int _btime, int _winc, int _binc) {
   wtime = _wtime;

@@ -33,7 +33,7 @@ int perft(int argc, char* argv[]) {
       cout << parts[i] << endl;
       int expected = stoi(parts[i].substr(parts[i].find(" ") + 1));
       cout << "               ";
-      if (expected > 1e6) {
+      if (expected > 1e7) {
         cout << "skipped" << endl;
         continue;
       }

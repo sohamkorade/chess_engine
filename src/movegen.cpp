@@ -3,12 +3,12 @@
 template <Direction dir>
 inline void only_capture(Position& pos, vector<Move>& movelist, int sq) {
   if (is_safe<dir>(sq) && hostile(pos[sq], pos[sq + dir]))
-    movelist.push_back(Move(sq, sq + dir));
+    movelist.emplace_back(sq, sq + dir);
 }
 template <Direction dir>
 inline bool only_move(Position& pos, vector<Move>& movelist, int sq) {
   if (is_safe<dir>(sq) && pos[sq + dir] == Empty) {
-    movelist.push_back(Move(sq, sq + dir));
+    movelist.emplace_back(sq, sq + dir);
     return true;
   }
   return false;
@@ -17,17 +17,28 @@ inline bool only_move(Position& pos, vector<Move>& movelist, int sq) {
 template <Direction dir>
 inline void slide(Position& pos, vector<Move>& movelist, int sq) {
   if (!is_safe<dir>(sq)) return;
-  for (int dest = sq + dir; in_board(dest) && !friendly(pos[sq], pos[dest]);
-       dest += dir) {
-    movelist.push_back(Move(sq, dest));
-    if (hostile(pos[sq], pos[dest])) break;
+  for (int dest = sq + dir; !friendly(pos[sq], pos[dest]); dest += dir) {
+    movelist.emplace_back(sq, dest);
+    if (pos[dest] != Empty) break;
     if (!is_safe<dir>(dest)) break;
   }
 }
 
-template <Direction... dirs>
-inline void slides(Position& pos, vector<Move>& movelist, int sq) {
-  initializer_list<int>{(slide<dirs>(pos, movelist, sq), 0)...};
+template <Direction dir, Piece piece>
+inline bool is_occupied(Position& pos, int sq) {
+  return is_safe<dir>(sq) && pos[sq + dir] == piece;
+}
+
+template <Direction dir, Piece p1, Piece p2, Piece King>
+inline bool diagonal_threats(Position& pos, int sq) {
+  if (!is_safe<dir>(sq)) return false;
+  if (pos[sq + dir] == King) return true;
+  for (int dest = sq + dir; !friendly(pos[sq], pos[dest]); dest += dir) {
+    if (pos[dest] == p1 || pos[dest] == p2) return true;
+    if (pos[dest] != Empty) break;  // different from slide
+    if (!is_safe<dir>(dest)) break;
+  }
+  return false;
 }
 
 template <Player turn>
@@ -43,25 +54,9 @@ bool is_in_threat(Position& pos, int sq) {
   // for debugging
   // #define true (printf("%d\n", __LINE__) || true)
 
-  // check for king threats
-  if (is_occupied<S, oppK>(pos, sq)) return true;
-  if (is_occupied<N, oppK>(pos, sq)) return true;
-  if (is_occupied<E, oppK>(pos, sq)) return true;
-  if (is_occupied<W, oppK>(pos, sq)) return true;
-  if (is_occupied<SE, oppK>(pos, sq)) return true;
-  if (is_occupied<SW, oppK>(pos, sq)) return true;
-  if (is_occupied<NE, oppK>(pos, sq)) return true;
-  if (is_occupied<NW, oppK>(pos, sq)) return true;
-
-  // check for pawn threats
-
-  if constexpr (turn == White) {
-    if (is_occupied<NW, oppP>(pos, sq)) return true;
-    if (is_occupied<NE, oppP>(pos, sq)) return true;
-  } else {
-    if (is_occupied<SW, oppP>(pos, sq)) return true;
-    if (is_occupied<SE, oppP>(pos, sq)) return true;
-  }
+  // check for pawn threats (relative to turn)
+  if (is_occupied<Direction(turn * NW), oppP>(pos, sq)) return true;
+  if (is_occupied<Direction(turn * NE), oppP>(pos, sq)) return true;
 
   // check for knight threats
   if (is_occupied<NNW, oppN>(pos, sq)) return true;
@@ -73,15 +68,15 @@ bool is_in_threat(Position& pos, int sq) {
   if (is_occupied<SSW, oppN>(pos, sq)) return true;
   if (is_occupied<SSE, oppN>(pos, sq)) return true;
 
-  // check for bishop, rook queen threats
-  if (is_occupied_slide<NW, oppB, oppQ>(pos, sq)) return true;
-  if (is_occupied_slide<NE, oppB, oppQ>(pos, sq)) return true;
-  if (is_occupied_slide<SW, oppB, oppQ>(pos, sq)) return true;
-  if (is_occupied_slide<SE, oppB, oppQ>(pos, sq)) return true;
-  if (is_occupied_slide<N, oppR, oppQ>(pos, sq)) return true;
-  if (is_occupied_slide<S, oppR, oppQ>(pos, sq)) return true;
-  if (is_occupied_slide<E, oppR, oppQ>(pos, sq)) return true;
-  if (is_occupied_slide<W, oppR, oppQ>(pos, sq)) return true;
+  // check for king, bishop, rook queen threats
+  if (diagonal_threats<NW, oppB, oppQ, oppK>(pos, sq)) return true;
+  if (diagonal_threats<NE, oppB, oppQ, oppK>(pos, sq)) return true;
+  if (diagonal_threats<SW, oppB, oppQ, oppK>(pos, sq)) return true;
+  if (diagonal_threats<SE, oppB, oppQ, oppK>(pos, sq)) return true;
+  if (diagonal_threats<N, oppR, oppQ, oppK>(pos, sq)) return true;
+  if (diagonal_threats<S, oppR, oppQ, oppK>(pos, sq)) return true;
+  if (diagonal_threats<E, oppR, oppQ, oppK>(pos, sq)) return true;
+  if (diagonal_threats<W, oppR, oppQ, oppK>(pos, sq)) return true;
 
 #undef true
 
@@ -91,22 +86,24 @@ bool is_in_threat(Position& pos, int sq) {
 template <Direction dir>
 inline void jump(Position& pos, vector<Move>& movelist, int sq) {
   if (is_safe<dir>(sq) && !friendly(pos[sq], pos[sq + dir]))
-    movelist.push_back(Move(sq, sq + dir));
-}
-
-template <Direction... dirs>
-inline void jumps(Position& pos, vector<Move>& movelist, int sq) {
-  initializer_list<int>{(jump<dirs>(pos, movelist, sq), 0)...};
+    movelist.emplace_back(sq, sq + dir);
 }
 
 template <Player turn>
 inline void generate_king_moves(Board& board, vector<Move>& pseudo) {
-  jumps<NE, NW, SE, SW, N, S, E, W>(board.board, pseudo,
-                                    turn == White ? board.Kpos : board.kpos);
+  const int K_pos = turn == White ? board.Kpos : board.kpos;
+  jump<NE>(board.board, pseudo, K_pos);
+  jump<NW>(board.board, pseudo, K_pos);
+  jump<SE>(board.board, pseudo, K_pos);
+  jump<SW>(board.board, pseudo, K_pos);
+  jump<N>(board.board, pseudo, K_pos);
+  jump<S>(board.board, pseudo, K_pos);
+  jump<E>(board.board, pseudo, K_pos);
+  jump<W>(board.board, pseudo, K_pos);
 }
 
 template <Player turn>
-inline void generate_promotions(Board& board, vector<Move>& pseudo) {
+inline void generate_promotions_and_ep(Board& board, vector<Move>& pseudo) {
   constexpr int prom_start_sq = turn == White ? 8 : 48;
   constexpr Direction rel_N = turn == White ? N : S;
   constexpr Direction rel_NW = turn == White ? NW : SW;
@@ -119,48 +116,40 @@ inline void generate_promotions(Board& board, vector<Move>& pseudo) {
     if (board[sq] != rel_P) continue;
     if (board.empty(sq + rel_N))
       for (auto& piece : {wQ, wR, wB, wN})
-        pseudo.push_back(Move(sq, sq + rel_N, Piece(piece * turn)));
+        pseudo.emplace_back(sq, sq + rel_N, Piece(piece * turn));
     if (isnt_A(sq) && hostile(board[sq], board[sq + rel_NW]))
       for (auto& piece : {wQ, wR, wB, wN})
-        pseudo.push_back(Move(sq, sq + rel_NW, Piece(piece * turn)));
+        pseudo.emplace_back(sq, sq + rel_NW, Piece(piece * turn));
     if (isnt_H(sq) && hostile(board[sq], board[sq + rel_NE]))
       for (auto& piece : {wQ, wR, wB, wN})
-        pseudo.push_back(Move(sq, sq + rel_NE, Piece(piece * turn)));
+        pseudo.emplace_back(sq, sq + rel_NE, Piece(piece * turn));
   }
 
-  const auto& enpassant_sq_idx = board.enpassant_sq_idx;
-  if (~enpassant_sq_idx) {
-    if (is_occupied<rel_SE, rel_P>(board.board,
-                                   enpassant_sq_idx))  // capture enpassant NW
-      pseudo.push_back(Move(enpassant_sq_idx + rel_SE, enpassant_sq_idx, Empty,
-                            Empty, true));
-    else if (is_occupied<rel_SW, rel_P>(
-                 board.board, enpassant_sq_idx))  // capture enpassant NE
-      pseudo.push_back(Move(enpassant_sq_idx + rel_SW, enpassant_sq_idx, Empty,
-                            Empty, true));
+  const auto& ep_sq = board.enpassant_sq_idx;
+  // only one enpassant square can be occupied at a time, so `else` is safe
+  if (~ep_sq) {
+    // capture enpassant NW
+    if (is_occupied<rel_SE, rel_P>(board.board, ep_sq))
+      pseudo.emplace_back(ep_sq + rel_SE, ep_sq, Empty, Empty, true);
+    // capture enpassant NE
+    else if (is_occupied<rel_SW, rel_P>(board.board, ep_sq))
+      pseudo.emplace_back(ep_sq + rel_SW, ep_sq, Empty, Empty, true);
   }
 }
 
 template <Player turn>
 void generate_pawn_moves(Board& board, vector<Move>& pseudo, int sq) {
-  constexpr Direction rel_N = turn == White ? N : S;
-  constexpr Direction rel_NW = turn == White ? NW : SW;
-  constexpr Direction rel_NE = turn == White ? NE : SE;
-  constexpr Direction rel_2N = turn == White ? NN : SS;
   const int rank = sq / 8;
   const int rel_rank = turn == White ? rank : 7 - rank;
 
-  only_capture<rel_NW>(board.board, pseudo, sq);  // capture NW
-  only_capture<rel_NE>(board.board, pseudo, sq);  // capture NE
+  // capture NW and NE
+  only_capture<Direction(NW * turn)>(board.board, pseudo, sq);
+  only_capture<Direction(NE * turn)>(board.board, pseudo, sq);
 
-  if (only_move<rel_N>(board.board, pseudo, sq))  // push
-    if (rel_rank == 6)
-      only_move<rel_2N>(board.board, pseudo,
-                        sq);  // double push only if push succeeds
-}
-
-inline void generate_knight_moves(Board& board, vector<Move>& pseudo, int sq) {
-  jumps<NNW, NNE, WNW, WSW, ENE, ESE, SSW, SSE>(board.board, pseudo, sq);
+  // push
+  if (only_move<Direction(N * turn)>(board.board, pseudo, sq))
+    // double push only if push succeeds
+    if (rel_rank == 6) only_move<Direction(NN * turn)>(board.board, pseudo, sq);
 }
 
 template <Player turn>
@@ -171,17 +160,17 @@ inline void generate_castling_moves(Board& board, vector<Move>& pseudo) {
   if constexpr (turn == White) {
     // kingside
     if (castling_rights[0] && empty(61) && empty(62))
-      pseudo.push_back(Move(60, 60 + E + E, Empty, Empty, false, true));
+      pseudo.emplace_back(60, 60 + E + E, Empty, Empty, false, true);
     // queenside
     if (castling_rights[1] && empty(57) & empty(58) && empty(59))
-      pseudo.push_back(Move(60, 60 + W + W, Empty, Empty, false, true));
+      pseudo.emplace_back(60, 60 + W + W, Empty, Empty, false, true);
   } else {
     // kingside
     if (castling_rights[2] && empty(5) && empty(6))
-      pseudo.push_back(Move(4, 4 + E + E, Empty, Empty, false, true));
+      pseudo.emplace_back(4, 4 + E + E, Empty, Empty, false, true);
     // queenside
     if (castling_rights[3] && empty(1) && empty(2) && empty(3))
-      pseudo.push_back(Move(4, 4 + W + W, Empty, Empty, false, true));
+      pseudo.emplace_back(4, 4 + W + W, Empty, Empty, false, true);
   }
 
 #undef empty
@@ -194,23 +183,11 @@ int perft(Board& board, int depth) {
   if (depth == 1) return legal.size();
 
   int nodes = 0;
-  // Board before = *this;
 
   for (auto& move : legal) {
     board.make_move(move);
-    // Board after = *this;
     nodes += perft(board, depth - 1);
     board.unmake_move(move);
-    // if (before.to_fen() != this->to_fen()) {
-    //   cerr << "! "
-    //        << "undo failed" << endl;
-    //   cerr << "move: ";
-    //   move.print();
-    //   cerr << "before:       " << before.to_fen() << endl;
-    //   cerr << "after move:   " << after.to_fen() << endl;
-    //   cerr << "after unmove: " << to_fen() << endl;
-    //   break;
-    // }
   }
   return nodes;
 }
@@ -219,30 +196,35 @@ int divide(Board& board, int depth) {
   int sum = 0;
   vector<string> moves;
   moves.reserve(40);
+  auto t1 = chrono::high_resolution_clock::now();
   auto legal = generate_legal_moves(board);
-  Board before = board;
+  // Board before = board;
   for (auto& move : legal) {
     board.make_move(move);
-    Board after = board;
+    // Board after = board;
     int nodes = perft(board, depth - 1);
     board.unmake_move(move);
-    if (before.to_fen() != board.to_fen()) {
-      cerr << "! "
-           << "undo failed" << endl;
-      cerr << "move: ";
-      move.print();
-      cerr << "before:       " << before.to_fen() << endl;
-      cerr << "after move:   " << after.to_fen() << endl;
-      cerr << "after unmove: " << board.to_fen() << endl;
-      break;
-    }
+    // if (before.to_fen() != board.to_fen()) {
+    //   cerr << "! "
+    //        << "undo failed" << endl;
+    //   cerr << "move: ";
+    //   move.print();
+    //   cerr << "before:       " << before.to_fen() << endl;
+    //   cerr << "after move:   " << after.to_fen() << endl;
+    //   cerr << "after unmove: " << board.to_fen() << endl;
+    //   break;
+    // }
     sum += nodes;
     moves.push_back(board.to_uci(move) + ": " + to_string(nodes));
   }
+  auto t2 = chrono::high_resolution_clock::now();
+  auto diff = chrono::duration_cast<chrono::nanoseconds>(t2 - t1).count();
+
   sort(moves.begin(), moves.end());
   for (auto& move : moves) cerr << move << endl;
   cerr << "Moves: " << legal.size() << endl;
   cerr << "Nodes: " << sum << endl;
+  cerr << "Nodes/sec: " << int(diff ? sum * 1e9 / diff : -1) << endl;
   return sum;
 }
 
@@ -255,7 +237,7 @@ vector<Move> generate_pseudo_moves(Board& board) {
   // we know where the king is
   generate_king_moves<turn>(board, pseudo);
   generate_castling_moves<turn>(board, pseudo);
-  generate_promotions<turn>(board, pseudo);
+  generate_promotions_and_ep<turn>(board, pseudo);
 
   constexpr Piece rel_P = Piece(wP * turn);
   constexpr Piece rel_N = Piece(wN * turn);
@@ -269,72 +251,88 @@ vector<Move> generate_pseudo_moves(Board& board) {
     const Piece p = board[sq];
     if (p == rel_P && rel_rank != 1)
       generate_pawn_moves<turn>(board, pseudo, sq);
-    else if (p == rel_N)
-      generate_knight_moves(board, pseudo, sq);
-    else if (p == rel_B)
-      slides<NW, NE, SW, SE>(board.board, pseudo, sq);
-    else if (p == rel_R)
-      slides<N, S, E, W>(board.board, pseudo, sq);
-    else if (p == rel_Q)
-      slides<N, S, E, W, NW, NE, SW, SE>(board.board, pseudo, sq);
+    else if (p == rel_N) {
+      jump<NNW>(board.board, pseudo, sq);
+      jump<NNE>(board.board, pseudo, sq);
+      jump<WNW>(board.board, pseudo, sq);
+      jump<WSW>(board.board, pseudo, sq);
+      jump<ENE>(board.board, pseudo, sq);
+      jump<ESE>(board.board, pseudo, sq);
+      jump<SSW>(board.board, pseudo, sq);
+      jump<SSE>(board.board, pseudo, sq);
+    }
+    if (p == rel_B || p == rel_Q) {
+      slide<NW>(board.board, pseudo, sq);
+      slide<NE>(board.board, pseudo, sq);
+      slide<SW>(board.board, pseudo, sq);
+      slide<SE>(board.board, pseudo, sq);
+    }
+    if (p == rel_R || p == rel_Q) {
+      slide<N>(board.board, pseudo, sq);
+      slide<S>(board.board, pseudo, sq);
+      slide<E>(board.board, pseudo, sq);
+      slide<W>(board.board, pseudo, sq);
+    }
   }
   return pseudo;
 }
 
 vector<Move> generate_pseudo_moves(Board& board) {
-  return board.turn == White ? generate_pseudo_moves<White>(board)
-                             : generate_pseudo_moves<Black>(board);
+  if (board.turn == White)
+    return generate_pseudo_moves<White>(board);
+  else
+    return generate_pseudo_moves<Black>(board);
 }
+
+// check if a pseudo-legal move is legal
+template <Player turn>
+bool is_legal(Board& board, Move& move) {
+  bool legal = true;
+  if (move.castling) {
+    // check if any squares that king moves to are threatened
+    auto threats = get_threats<Player(-turn)>(board);
+    if (  // white kingside castling
+        (move.from == 60 && move.to == 62 &&
+         (threats[60] || threats[61] || threats[62])) ||
+        // black queenside castling
+        (move.from == 4 && move.to == 6 &&
+         (threats[4] || threats[5] || threats[6])) ||
+        // white kingside castling
+        (move.from == 60 && move.to == 58 &&
+         (threats[60] || threats[59] || threats[58])) ||
+        // black queenside castling
+        (move.from == 4 && move.to == 2 &&
+         (threats[4] || threats[3] || threats[2]))) {
+      legal = false;
+    }
+  } else {
+    // check if king is threatened
+    board.make_move(move);
+    legal = !is_in_check(board, turn);
+    board.unmake_move(move);
+  }
+  return legal;
+}
+
 template <Player turn>
 vector<Move> generate_legal_moves(Board& board) {
   // cout << "gen legal @" << zobrist_hash() << endl;
   auto movelist = generate_pseudo_moves<turn>(board);
-  vector<Move> sorted_moves, others;
-  sorted_moves.reserve(movelist.size());
+  vector<Move> better_moves, others;
+  better_moves.reserve(movelist.size());
   others.reserve(movelist.size());
 
   for (auto& move : movelist) {
-    bool valid_move = true;
-    // cout << "checking move ";
-    // move.print();
-    if (move.castling) {
-      // check if any squares that king moves to are threatened
-      auto threats = get_threats<Player(-turn)>(board);
-      if (  // white kingside castling
-          (move.from == 60 && move.to == 62 &&
-           (threats[60] || threats[61] || threats[62])) ||
-          // black queenside castling
-          (move.from == 4 && move.to == 6 &&
-           (threats[4] || threats[5] || threats[6])) ||
-          // white kingside castling
-          (move.from == 60 && move.to == 58 &&
-           (threats[60] || threats[59] || threats[58])) ||
-          // black queenside castling
-          (move.from == 4 && move.to == 2 &&
-           (threats[4] || threats[3] || threats[2]))) {
-        valid_move = false;
-      }
-    } else {
-      // check if king is threatened
-      board.make_move(move);
-      valid_move = !is_in_check(board, turn);
-      board.unmake_move(move);
-    }
-    if (valid_move)
+    if (is_legal<turn>(board, move))
       (board.empty(move.to) || move.promotion != Empty || move.enpassant ||
                move.castling
-           ? sorted_moves
+           ? better_moves
            : others)
           .push_back(move);
   }
-  // cout << "sorted:" << endl;
-  // for (auto& x : sorted_moves) {
-  //   x.print();
-  // }
-  // cout << "end sorted" << endl;
 
-  sorted_moves.insert(sorted_moves.end(), others.begin(), others.end());
-  return sorted_moves;
+  better_moves.insert(better_moves.end(), others.begin(), others.end());
+  return better_moves;
 }
 
 vector<Move> generate_legal_moves(Board& board) {
@@ -362,45 +360,59 @@ bool make_move_if_legal(Board& board, string move) {
   return false;
 }
 
-vector<string> list_san(Board& board, vector<Move> movelist) {
-  vector<string> temp;
-  temp.resize(movelist.size());
-  for (auto& move : movelist) {
-    string san;
-    if (move.castling) {
-      if ((move.from == 4 && move.to == 6) ||
-          (move.from == 60 && move.to == 62))
-        san = "O-O";
-      else if ((move.from == 4 && move.to == 2) ||
-               (move.from == 60 && move.to == 58))
-        san = "O-O-O";
-    } else {
-      char piece = toupper(piece2char(board.board[move.from]));
-      if (piece != 'P') san = piece;
-      bool from_file = false;
-      bool from_rank = false;
-      for (auto& move2 : movelist) {
-        if (move2.from != move.from || move2.to != move.to)
-          if (board[move2.from] == board[move.from])  // same piece
+string to_san(Board& board, Move move) {
+  string san;
+  // castling
+  if (move.castling) {
+    if ((move.from == 4 && move.to == 6) || (move.from == 60 && move.to == 62))
+      san = "O-O";
+    else if ((move.from == 4 && move.to == 2) ||
+             (move.from == 60 && move.to == 58))
+      san = "O-O-O";
+  } else {
+    char piece = toupper(piece2char(board.board[move.from]));
+    string origin = idx2sq(move.from);
+    string target = idx2sq(move.to);
+
+    // piece identification
+    if (piece != 'P') san = piece;
+
+    // disambiguation
+    bool same_file = false, same_rank = false;
+    for (auto& move2 : generate_pseudo_moves(board)) {
+      if (move2.from != move.from)                    // don't compare to self
+        if (move2.to == move.to)                      // same destination
+          if (board[move2.from] == board[move.from])  // same kind of piece
           {
             if (move2.from / 8 == move.from / 8)  // same rank
-              from_file = true;
+              same_file = true;
             if (move2.from % 8 == move.from % 8)  // same file
-              from_rank = true;
-            if (from_file || from_rank) break;
+              same_rank = true;
           }
-      }
-      if (from_file) san += idx2sq(move.from)[0];
-      if (from_rank) san += idx2sq(move.from)[1];
-      if (!board.empty(move.to) || move.enpassant) san += 'x';
-      san += idx2sq(move.to);
-      if (move.promotion != Empty) {
-        san += '=';
-        san += toupper(piece2char(move.promotion));
-      }
-      if (is_in_check(board, board.turn)) san += '+';
     }
-    temp.push_back(san);
+    if (same_file && piece != 'P') san += origin[0];  // add file, if not pawn
+    if (same_rank) san += origin[1];                  // add rank
+
+    // capture
+    if (!board.empty(move.to) || move.enpassant) {
+      if (piece == 'P') san += origin[0];  // add file if piece is pawn
+      san += 'x';
+    }
+
+    // target
+    san += target;
+
+    // promotion
+    if (move.promotion != Empty) {
+      san += '=';
+      san += toupper(piece2char(move.promotion));
+    }
   }
-  return temp;
+  board.make_move(move);
+  if (generate_legal_moves(board).size() == 0)  // mate indication
+    san += '#';
+  else if (is_in_check(board, board.turn))  // check indication
+    san += '+';
+  board.unmake_move(move);
+  return san;
 }
