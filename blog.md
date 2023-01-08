@@ -205,3 +205,17 @@
 	- wrote hand-crafted `is_in_threat` function, now engine can avoid moves leading to checks!
 	- earlier it worked by generating all opponent's pseudo-legal moves and checked if any move attacks a square.
 	- this made move generation faster by 3.5x!
+
+...
+
+## 7 Jan 2023
+- cleaned up code
+- replaced push_back with emplace_back
+- refactored out of board checks for moves
+- result: reduced movegen time by 15%!
+- working `to_san` function
+- refactored out legal move checks
+
+## 8 Jan 2023
+- increased max node limit in perft tests
+- shocked to see test fail! new bug-hunt begins!!

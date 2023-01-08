@@ -84,8 +84,7 @@ void uci_loop() {
         } else if (token == "startpos") {
           board.load_startpos();
           iss >> token;
-          if (token == "moves")
-            parse_and_make_moves(iss, board, repetitions);
+          if (token == "moves") parse_and_make_moves(iss, board, repetitions);
         } else if (token == "perft") {
           iss >> token;
           if (!ai.searching) {
@@ -116,15 +115,11 @@ void uci_loop() {
 
       // additional commands
     } else if (token == "pseudo") {
-      Game temp;
-      temp.board = board;
-      temp.movelist = generate_pseudo_moves(board);
-      temp.print_movelist();
+      for (auto& move : generate_pseudo_moves(board))
+        cout << to_san(board, move) << "\n";
     } else if (token == "legal") {
-      Game temp;
-      temp.board = board;
-      temp.movelist = generate_legal_moves(board);
-      temp.print_movelist();
+      for (auto& move : generate_legal_moves(board))
+        cout << to_san(board, move) << "\n";
     } else if (token == "lichess") {
       string fen = board.to_fen();
       replace(fen.begin(), fen.end(), ' ', '_');
