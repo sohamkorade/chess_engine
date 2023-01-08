@@ -198,7 +198,7 @@ void computer_move() {
 
 void make_legal_move(Move m) {
   for (auto &move : generate_legal_moves(g.board))
-    if (move.from == m.from && move.to == m.to) {
+    if (move.equals(m)) {
       make_move(m);
       break;
     }
@@ -222,7 +222,7 @@ void make_move(Move m) {
 void move_intent(int sq) {
   vector<Move> valids;
   for (auto &move : moves)
-    if (move.from == sel_sq && move.to == sq) valids.push_back(move);
+    if (move.equals(sel_sq, sq)) valids.push_back(move);
   valid_sqs.clear();
   valid_capture_sqs.clear();
   if (valids.size() == 1)

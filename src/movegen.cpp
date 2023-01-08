@@ -1,12 +1,12 @@
 #include "movegen.hpp"
 
 template <Direction dir>
-inline void only_capture(Position& pos, vector<Move>& movelist, int sq) {
+void only_capture(Position& pos, vector<Move>& movelist, int sq) {
   if (is_safe<dir>(sq) && hostile(pos[sq], pos[sq + dir]))
     movelist.emplace_back(sq, sq + dir);
 }
 template <Direction dir>
-inline bool only_move(Position& pos, vector<Move>& movelist, int sq) {
+bool only_move(Position& pos, vector<Move>& movelist, int sq) {
   if (is_safe<dir>(sq) && pos[sq + dir] == Empty) {
     movelist.emplace_back(sq, sq + dir);
     return true;
@@ -15,7 +15,7 @@ inline bool only_move(Position& pos, vector<Move>& movelist, int sq) {
 }
 
 template <Direction dir>
-inline void slide(Position& pos, vector<Move>& movelist, int sq) {
+void slide(Position& pos, vector<Move>& movelist, int sq) {
   if (!is_safe<dir>(sq)) return;
   for (int dest = sq + dir; !friendly(pos[sq], pos[dest]); dest += dir) {
     movelist.emplace_back(sq, dest);
@@ -25,12 +25,12 @@ inline void slide(Position& pos, vector<Move>& movelist, int sq) {
 }
 
 template <Direction dir, Piece piece>
-inline bool is_occupied(Position& pos, int sq) {
+bool is_occupied(Position& pos, int sq) {
   return is_safe<dir>(sq) && pos[sq + dir] == piece;
 }
 
 template <Direction dir, Piece p1, Piece p2, Piece King>
-inline bool diagonal_threats(Position& pos, int sq) {
+bool diagonal_threats(Position& pos, int sq) {
   if (!is_safe<dir>(sq)) return false;
   if (pos[sq + dir] == King) return true;
   for (int dest = sq + dir; !friendly(pos[sq], pos[dest]); dest += dir) {
@@ -84,13 +84,13 @@ bool is_in_threat(Position& pos, int sq) {
 }
 
 template <Direction dir>
-inline void jump(Position& pos, vector<Move>& movelist, int sq) {
+void jump(Position& pos, vector<Move>& movelist, int sq) {
   if (is_safe<dir>(sq) && !friendly(pos[sq], pos[sq + dir]))
     movelist.emplace_back(sq, sq + dir);
 }
 
 template <Player turn>
-inline void generate_king_moves(Board& board, vector<Move>& pseudo) {
+void generate_king_moves(Board& board, vector<Move>& pseudo) {
   const int K_pos = turn == White ? board.Kpos : board.kpos;
   jump<NE>(board.board, pseudo, K_pos);
   jump<NW>(board.board, pseudo, K_pos);
@@ -103,7 +103,7 @@ inline void generate_king_moves(Board& board, vector<Move>& pseudo) {
 }
 
 template <Player turn>
-inline void generate_promotions_and_ep(Board& board, vector<Move>& pseudo) {
+void generate_promotions_and_ep(Board& board, vector<Move>& pseudo) {
   constexpr int prom_start_sq = turn == White ? 8 : 48;
   constexpr Direction rel_N = turn == White ? N : S;
   constexpr Direction rel_NW = turn == White ? NW : SW;
@@ -153,7 +153,7 @@ void generate_pawn_moves(Position& pos, vector<Move>& pseudo, int sq) {
 }
 
 template <Player turn>
-inline void generate_castling_moves(Board& board, vector<Move>& pseudo) {
+void generate_castling_moves(Board& board, vector<Move>& pseudo) {
   auto castling_rights = board.castling_rights;
 #define empty board.empty
 
@@ -162,7 +162,7 @@ inline void generate_castling_moves(Board& board, vector<Move>& pseudo) {
     if (castling_rights[0] && empty(61) && empty(62))
       pseudo.emplace_back(60, 60 + E + E, Empty, Empty, false, true);
     // queenside
-    if (castling_rights[1] && empty(57) & empty(58) && empty(59))
+    if (castling_rights[1] && empty(57) && empty(58) && empty(59))
       pseudo.emplace_back(60, 60 + W + W, Empty, Empty, false, true);
   } else {
     // kingside
@@ -296,13 +296,13 @@ bool is_legal(Board& board, Move& move) {
 // check unsafe square
 #define US(sq) is_in_threat<turn>(board.board, sq)
     if (  // white kingside castling
-        (move.from == 60 && move.to == 62 && (US(60) || US(61) || US(62))) ||
+        (move.equals(60, 62) && (US(60) || US(61) || US(62))) ||
         // black queenside castling
-        (move.from == 4 && move.to == 6 && (US(4) || US(5) || US(6))) ||
+        (move.equals(4, 6) && (US(4) || US(5) || US(6))) ||
         // white kingside castling
-        (move.from == 60 && move.to == 58 && (US(60) || US(59) || US(58))) ||
+        (move.equals(60, 58) && (US(60) || US(59) || US(58))) ||
         // black queenside castling
-        (move.from == 4 && move.to == 2 && (US(4) || US(3) || US(2)))) {
+        (move.equals(4, 2) && (US(4) || US(3) || US(2)))) {
       legal = false;
     }
 #undef US
@@ -354,7 +354,7 @@ bool make_move_if_legal(Board& board, string move) {
       promotion =
           char2piece(board.turn == White ? toupper(move[4]) : tolower(move[4]));
     for (auto& m : generate_legal_moves(board))
-      if (m.from == from && m.to == to && m.promotion == promotion) {
+      if (m.equals(from, to) && m.promotion == promotion) {
         board.make_move(m);
         return true;
       }
@@ -366,10 +366,9 @@ string to_san(Board& board, Move move) {
   string san;
   // castling
   if (move.castling) {
-    if ((move.from == 4 && move.to == 6) || (move.from == 60 && move.to == 62))
+    if (move.equals(4, 6) || move.equals(60, 62))
       san = "O-O";
-    else if ((move.from == 4 && move.to == 2) ||
-             (move.from == 60 && move.to == 58))
+    else if (move.equals(4, 2) || move.equals(60, 58))
       san = "O-O-O";
   } else {
     char piece = toupper(piece2char(board.board[move.from]));

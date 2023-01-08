@@ -22,6 +22,10 @@ class Move {
         enpassant(_enpassant),
         castling(_castling) {}
   void print();
+  inline bool equals(int _from, int _to) { return from == _from && to == _to; }
+  inline bool equals(Move& move) {
+    return equals(move.from, move.to) && promotion == move.promotion;
+  }
 };
 
 class Board {
@@ -34,11 +38,13 @@ class Board {
   // CheckType check = CheckNotChecked;
   uint64_t hash = 0;
 
-  Board();
+  Board() { load_startpos(); }
   constexpr Piece operator[](int i) { return board[i]; }
+  inline void change_turn() { turn = Player(-turn); }
+  inline bool empty(int idx) { return board[idx] == Empty; }
+
   inline int piece_color(int sq_idx);
   void print(string sq = "", bool flipped = false);
-  inline void change_turn();
   void make_move(Move& move);
   void unmake_move(Move& move);
   bool load_fen(string fen);
@@ -46,12 +52,9 @@ class Board {
   string to_uci(Move move);
   string to_san(Move move);
   void load_startpos();
-  inline bool empty(int idx);
 
   uint64_t zobrist_hash();
 };
-
-inline void Board::change_turn() { turn = Player(-turn); }
 
 int sq2idx(char file, char rank);
 string idx2sq(int idx);
@@ -59,7 +62,6 @@ string idx2sq(int idx);
 inline bool friendly(Piece a, Piece b) { return a * b > 0; }
 inline bool hostile(Piece a, Piece b) { return a * b < 0; }
 inline bool in_board(int idx) { return idx >= 0 && idx < 64; }
-inline bool Board::empty(int index) { return board[index] == Empty; }
 
 inline bool isnt_H(int idx) { return idx % 8 != 7; }
 inline bool isnt_A(int idx) { return idx % 8 != 0; }
