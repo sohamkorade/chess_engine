@@ -21,6 +21,7 @@ class Search {
   SearchType search_type = Time_per_game;
   atomic<bool> searching{false};
   multiset<uint64_t> repetitions;  // for checking repetition
+  int nodes_searched = 0;
 
   string debug = "";
 

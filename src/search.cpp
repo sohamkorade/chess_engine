@@ -55,6 +55,7 @@ void print_score(int score) {
     cout << " score mate " << mate;
 }
 
+// TODO: verify thoroughly
 vector<pair<int, Move>> Search::iterative_search() {
   vector<pair<int, Move>> bestmoves, tempmoves;
   // Move bestmove;
@@ -88,7 +89,7 @@ vector<pair<int, Move>> Search::iterative_search() {
   for (auto& move : legals) legalmoves.push_back({0, move});
 
   // iterative deepening
-  int depth = 1;
+  int depth = 0;
   for (; searching && time_taken * 2 < max_search_time && depth <= max_depth;
        depth++) {
     tempmoves = bestmoves;
@@ -129,12 +130,13 @@ vector<pair<int, Move>> Search::iterative_search() {
       //      << " score: " << score_move.first << endl;
 
       auto t1 = chrono::high_resolution_clock::now();
+      nodes_searched = 0;
       board.make_move(score_move.second);
       int score = 0;
       // score = -alphabeta(depth, -MateScore, +MateScore);
       // int score2 = -negamax(depth);
-      score = -negamax(depth);
-
+      // score = -negamax(depth);
+      score = -alphabeta(depth, -MateScore, +MateScore);
       board.unmake_move(score_move.second);
       auto t2 = chrono::high_resolution_clock::now();
       auto diff = chrono::duration_cast<chrono::milliseconds>(t2 - t1).count();
@@ -156,8 +158,8 @@ vector<pair<int, Move>> Search::iterative_search() {
       cout << "info searching depth " << depth;
       print_score(score);
       // print_score(score2);
-      cout << " time " << diff << " pv " << board.to_uci(score_move.second)
-           << endl;
+      cout << " nodes " << nodes_searched << " time " << diff << " pv "
+           << board.to_uci(score_move.second) << endl;
 
       // if (score > bestscore) {
       // bestscore = score;
@@ -172,7 +174,8 @@ vector<pair<int, Move>> Search::iterative_search() {
 
     cout << "info depth " << depth;
     print_score(bestmoves.front().first);
-    cout << " time " << time_taken - time_taken_depth << " pv "
+    cout << " nodes " << nodes_searched << " time "
+         << time_taken - time_taken_depth << " pv "
          << board.to_uci(bestmoves.front().second) << endl;
     time_taken_depth = time_taken;
 
@@ -196,9 +199,10 @@ vector<pair<int, Move>> Search::iterative_search() {
 int Search::print_eval() {
   int material_score = 0;
   int pst_score = 0;
+  int mobility_score = 0;
   int queens = 0;
   for (int i = 0; i < 64; i++) {
-    Piece piece = board.board[i];
+    const Piece piece = board.board[i];
     if (abs(piece) == wQ) queens++;
     material_score += piece_val[piece + 6];
     if (piece)
@@ -217,13 +221,21 @@ int Search::print_eval() {
     pst_score += 5 * cmd + 2 * (14 - md);
   }
 
+  // int rel_mobility = board.generate_legal_moves().size();
+  // board.change_turn();
+  // int opp_mobility = board.generate_legal_moves().size();
+  // board.change_turn();
+  // mobility_score = (rel_mobility - opp_mobility) * board.turn;
+
+  board.print();
+
   cout << "fen: " << board.to_fen() << endl;
   cout << "material: " << material_score << endl;
   cout << "position: " << pst_score << endl;
 
   cout << "is in check: " << is_in_check(board, board.turn) << endl;
 
-  return material_score + pst_score;
+  return material_score + pst_score + mobility_score;
 }
 
 inline int Search::eval() {
@@ -268,7 +280,9 @@ int Search::negamax(int depth) {
     board.make_move(move);
     int score = -negamax(depth - 1);
     board.unmake_move(move);
-    bestscore = max(bestscore, score);
+    if (score > bestscore) {
+      bestscore = score;
+    }
   }
   if (legals.size() == 0)
     return is_in_check(board, board.turn) ? -MateScore + depth : 0;
@@ -276,89 +290,77 @@ int Search::negamax(int depth) {
   return bestscore;
 }
 
-int reduction(int depth, int moves) { return 1; }
-
 int Search::alphabeta(int depth, int alpha, int beta) {
-  int extra_depth = 0;
-  bool checked = is_in_check(board, board.turn);
-  if (checked) extra_depth++;
+  nodes_searched++;
 
-  // Mate distance pruning
-  alpha = max(alpha, -MateScore + board.moves);
-  beta = min(beta, MateScore - board.moves - 1);
-  if (alpha >= beta) return alpha;
+  // TODO: check repetition
+  // return 0;
 
-  if (depth <= 0 || depth > 50) return quiesce(0, alpha, beta);
-  int bestscore = -MateScore;
+  // TODO: probe TT
+  // return TT_score;
+
+  if (depth == 0 || depth > max_depth) return quiesce(0, alpha, beta);
+
+  bool in_check = is_in_check(board, board.turn);
+
+  // check extension
+  if (in_check) depth++;
+
+  int score = 0;
 
   auto legals = generate_legal_moves(board);
 
-  // if (legals.size() == 1) return alpha;
-
-  int moves = 0;
-  // int late_moves = legals.size() / 2 + 1;
-  int score;
-
-  // null move pruning
-  if (!checked) {
-    board.change_turn();
-    score = -alphabeta(depth + extra_depth - reduction(depth, moves), -beta,
-                       -alpha);
-    board.change_turn();
-    if (score >= beta) return score;
-  }
   for (auto& move : legals) {
     board.make_move(move);
-    // // late move reduction
-    // if (moves < late_moves) {
-    //   score = -alphabeta(depth + extra_depth - 1, -beta, -alpha);
-    // } else {
-    //   score = -alphabeta(depth + extra_depth - 1 - reduction(depth, moves),
-    //                      -beta, -alpha);
-    //   if (score >= alpha)
-    score = -alphabeta(depth + extra_depth - 1, -beta, -alpha);
-    // }
+    // TODO: late move reduction
+    // full window search if not LMR
+    score = -alphabeta(depth - 1, -beta, -alpha);
     board.unmake_move(move);
-    if (score >= beta) return score;  // fail hard beta-cutoff, killer move
-    alpha = max(alpha, score);
-    bestscore = max(bestscore, score);
-    moves++;
+    if (score > alpha) {
+      // TODO: PV update
+      alpha = score;
+      if (alpha >= beta) {  // fail-high beta-cutoff
+                            // TODO: store TT
+        return beta;
+      }
+    }
   }
-  // TODO: check + or - depth
-  if (legals.size() == 0) bestscore = is_in_check ? -MateScore + depth : 0;
-  return bestscore;
+
+  // checkmate or stalemate
+  if (legals.size() == 0) return in_check ? -MateScore + depth : 0;
+
+  // TODO: store TT
+  return alpha;  // fail-low alpha-cutoff
 }
 
 int Search::quiesce(int depth, int alpha, int beta) {
-  int pat = eval() * board.turn;
-  if (pat >= beta) return beta;
-  if (depth > 5) return pat;
+  if (depth > max_depth) return eval() * board.turn;
 
-  // // delta pruning, 900=queen value
-  // if (alpha - pat > 900) return alpha;
+  int stand_pat = eval() * board.turn;
+  if (stand_pat >= beta) {  // fail-high beta-cutoff
+    return beta;
+  }
 
-  int extra_depth = 0;
-  bool checked = is_in_check(board, board.turn);
-  if (checked) extra_depth++;
+  if (stand_pat > alpha) {  // fail-low alpha-cutoff
+    alpha = stand_pat;
+  }
 
-  alpha = max(alpha, pat);
+  nodes_searched++;
 
   auto legals = generate_legal_moves(board);
 
-  // if (legals.size() == 1) return 0;
-
   for (auto& move : legals) {
-    if (!checked)  // never reaches quiescence while in check ??
-      if (board.empty(move.to) || move.promotion != Empty)
-        continue;  // consider only captures, but only
-                   // if not in check
+    if (board[move.to] == Empty) continue;  // ignore quiet moves
     board.make_move(move);
-    int score = -quiesce(depth + 1 + extra_depth, -beta, -alpha);
+    int score = -quiesce(depth + 1, -beta, -alpha);
     board.unmake_move(move);
-    if (score >= beta) return score;
-    alpha = max(alpha, score);
+    if (score > alpha) {
+      alpha = score;
+      if (alpha >= beta) {  // fail-high beta-cutoff
+        return beta;
+      }
+    }
   }
-  if (legals.size() == 0) return checked ? -MateScore + depth : 0;
 
-  return alpha;
+  return alpha;  // fail-low alpha-cutoff
 }
