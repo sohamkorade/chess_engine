@@ -215,7 +215,7 @@ int divide(Board& board, int depth) {
     //   break;
     // }
     sum += nodes;
-    moves.push_back(board.to_uci(move) + ": " + to_string(nodes));
+    moves.push_back(move.to_uci() + ": " + to_string(nodes));
   }
   auto t2 = chrono::high_resolution_clock::now();
   auto diff = chrono::duration_cast<chrono::nanoseconds>(t2 - t1).count();
@@ -326,7 +326,7 @@ vector<Move> generate_legal_moves(Board& board) {
 
   for (auto& move : movelist) {
     if (is_legal<turn>(board, move))
-      (board.empty(move.to) || move.promotion != Empty || move.enpassant ||
+      (board[move.to] != Empty || move.promotion != Empty || move.enpassant ||
                move.castling
            ? better_moves
            : others)

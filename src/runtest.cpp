@@ -91,7 +91,7 @@ int bestmove(int argc, char* argv[]) {
     cout << "\e[35m";
     ai.board = b;
     auto begint = chrono::high_resolution_clock::now();
-    string found = b.to_san(ai.search().first);
+    string found = to_san(b, ai.search().first);
     auto endt = chrono::high_resolution_clock::now();
     cout << "\e[0m";
 
@@ -140,10 +140,10 @@ int mate(int argc, char* argv[]) {
   int i = 0;
   while (getline(epd, line) && k--) {
     if (!b.load_fen(line)) cout << "Unable to parse FEN" << endl;
-    // int ans = stoi(line.substr(line.find("; M") + 3));
+    int ans = stoi(line.substr(line.find("; M") + 3));
     // cout << "mate in " << ans << endl;
     cout << "[" << i++ << "] in: " << line << endl;
-    // cout.setstate(ios_base::failbit);
+    cout.setstate(ios_base::failbit);
     auto begint = chrono::high_resolution_clock::now();
     Move bestmove = ai.search().first;
     auto endt = chrono::high_resolution_clock::now();
@@ -154,8 +154,8 @@ int mate(int argc, char* argv[]) {
     total += elapsed;
 
     cout.clear();
-    cout << "out: " << b.to_san(bestmove) << " mate " << ai.debug << endl;
-    cout << (stoi(ai.debug) > 0 ? PASS : FAIL) << " [" << elapsed << "s]"
+    cout << "out: " << to_san(b, bestmove) << " mate " << ai.debug << endl;
+    cout << (stoi(ai.debug) == ans ? PASS : FAIL) << " [" << elapsed << "s]"
          << endl;
   }
 

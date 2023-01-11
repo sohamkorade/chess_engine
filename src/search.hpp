@@ -5,12 +5,14 @@
 #include "types.hpp"
 
 struct TTEntry {  // transposition table entry
+  uint64_t hash;
   int age;
   int depth = 0;
   int score;
   EvalType eval_type;
-  Move best_move;
+  // Move best_move;
 };
+typedef TTEntry* TT_t;
 
 class Search {
  public:
@@ -21,6 +23,7 @@ class Search {
   SearchType search_type = Time_per_game;
   atomic<bool> searching{false};
   multiset<uint64_t> repetitions;  // for checking repetition
+  TT_t TT;
   int nodes_searched = 0;
 
   string debug = "";

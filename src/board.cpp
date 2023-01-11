@@ -291,35 +291,11 @@ string Board::to_fen() {
   return fen;
 }
 
-string Board::to_uci(Move move) {
-  string uci = idx2sq(move.from) + idx2sq(move.to);
-  if (move.promotion != Empty)
-    uci += tolower(piece2char(move.promotion));  // promotion always lowercase
+string Move::to_uci() {
+  string uci = idx2sq(from) + idx2sq(to);
+  if (promotion != Empty)
+    uci += tolower(piece2char(promotion));  // promotion always lowercase
   return uci;
-}
-
-string Board::to_san(Move move) {
-  Piece piece = Piece(abs(board[move.from]));
-  string san;
-  san.reserve(5);
-  // TODO: maybe simplify
-  if (move.castling) {
-    if (move.equals(4, 6) || move.equals(60, 62))
-      san = "O-O";
-    else if (move.equals(4, 2) || move.equals(60, 58))
-      san = "O-O-O";
-  } else {
-    if (piece != wP && piece != Empty) san = piece2char(piece);
-    san += idx2sq(move.from);
-    if (!empty(move.to) || move.enpassant) san += 'x';
-    san += idx2sq(move.to);
-    if (move.promotion != Empty) {
-      san += '=';
-      san += toupper(move.promotion);
-    }
-  }
-
-  return san;
 }
 
 void Board::load_startpos() {

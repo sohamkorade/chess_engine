@@ -3,8 +3,55 @@
 #include "knowledge.hpp"
 
 const int MateScore = 1000000;
+const int TT_miss = 404000;
+int TT_size = 1 << 16;
 
-Search::Search() {}
+void init_TT(TT_t& TT, int size) {
+  // get next power of 2
+  int n = 1;
+  while (n < size) n <<= 1;
+  TT_size = n;
+
+  // allocate memory, half the size if fails
+  do TT = new (nothrow) TTEntry[TT_size];
+  while (!TT && (TT_size >>= 1));
+
+  for (int i = 0; i < TT_size; i++) {
+    TT[i].age = -1;
+    TT[i].depth = 0;
+  }
+}
+
+int normalize_score(int score, int depth) {
+  if (score > MateScore) return score - depth;
+  if (score < -MateScore) return score + depth;
+  return score;
+}
+
+inline int TT_probe(TT_t TT, u_int64_t hash, int depth, int alpha, int beta) {
+  TT_t entry = &TT[hash % TT_size];
+  if (entry->hash != hash) return TT_miss;  // verify hash
+  if (entry->age > 0 && entry->depth >= depth) {
+    int score = normalize_score(entry->score, depth);
+    if (entry->eval_type == Exact) return score;
+    if (entry->eval_type == LowerBound && score >= beta) return beta;
+    if (entry->eval_type == UpperBound && score <= alpha) return alpha;
+  }
+  return TT_miss;
+}
+
+inline void TT_store(TT_t TT, u_int64_t hash, int depth, int score,
+                     EvalType eval_type) {
+  TT_t entry = &TT[hash % TT_size];
+  if (entry->depth > depth) return;  // don't overwrite deeper scores
+  entry->age = 1;
+  entry->hash = hash;
+  entry->depth = depth;
+  entry->score = normalize_score(score, depth);
+  entry->eval_type = eval_type;
+}
+
+Search::Search() { init_TT(TT, TT_size); }
 
 void Search::set_clock(int _wtime, int _btime, int _winc, int _binc) {
   wtime = _wtime;
@@ -33,17 +80,17 @@ pair<Move, int> Search::search() {
     }
     if (bestmove.from != bestmove.to) break;
   }
-  cout << "info bestmove: " << bestscore << " = " << board.to_san(bestmove)
-       << " out of " << movelist.size() << endl;
-  cout << "bestmove " << board.to_uci(bestmove) << endl;
+  cout << "info bestmove: " << bestscore << " = " << to_san(board, bestmove)
+       << " out of " << movelist.size() << "\n";
+  cout << "bestmove " << bestmove.to_uci() << "\n";
   return {bestmove, bestscore};
 }
 
 int get_mate_score(int score) {
   if (score > MateScore / 2)
-    return MateScore - score;
+    return (MateScore - score) / 2 + 1;
   else if (score < -MateScore / 2)
-    return -MateScore - score;
+    return (-score - MateScore) / 2 - 1;
   return 0;
 }
 
@@ -55,60 +102,62 @@ void print_score(int score) {
     cout << " score mate " << mate;
 }
 
+void print_info(string infostring, int depth, int score, int nodes_searched,
+                int time_taken, string move) {
+  cout << infostring << " depth " << depth;
+  print_score(score);
+  cout << " nodes " << nodes_searched << " time " << time_taken << " pv "
+       << move << "\n";
+}
+
 // TODO: verify thoroughly
 vector<pair<int, Move>> Search::iterative_search() {
   vector<pair<int, Move>> bestmoves, tempmoves;
-  // Move bestmove;
-  // int bestscore = -1e8;
-  // int max_breadth = 5;
-  // {
-  //   ofstream log("log.txt");
-  //   log << "";
-  //   log.close();
-  // }
-  int time_taken = 0, time_taken_depth = 0;
+  int time_taken = 0;
   int max_search_time = (board.turn == White) ? (wtime + winc) : (btime + binc);
   if (search_type == Fixed_depth) {
     max_search_time = INT_MAX;
-    cout << "info using maxdepth: " << max_depth << endl;
+    cout << "info using maxdepth: " << max_depth << "\n";
   } else if (search_type == Time_per_move) {
     max_search_time = mtime;
-    cout << "info using movetime: " << max_search_time << endl;
+    cout << "info using movetime: " << max_search_time << "\n";
   } else if (search_type == Time_per_game) {
     double percentage = 1;  // 0.88;
     max_search_time *= min((percentage + board.moves / 116.4) / 50, percentage);
-    cout << "info using time: " << max_search_time << endl;
+    cout << "info using time: " << max_search_time << "\n";
   } else {
     max_search_time = INT_MAX;
-    cout << "info using infinite: " << max_search_time << endl;
+    cout << "info using infinite: " << max_search_time << "\n";
   }
+
+  const auto start_time = chrono::high_resolution_clock::now();
 
   // convert moves to score-move pairs
   auto legals = generate_legal_moves(board);
   vector<pair<int, Move>> legalmoves;
-  for (auto& move : legals) legalmoves.push_back({0, move});
+  for (auto& move : legals) legalmoves.emplace_back(0, move);
 
   // iterative deepening
-  int depth = 0;
+  int depth = 1;
   for (; searching && time_taken * 2 < max_search_time && depth <= max_depth;
        depth++) {
     tempmoves = bestmoves;
     bestmoves.clear();
 
-    if (search_type != Mate && search_type != Infinite) {
-      // no need to seach deeper if there's only one legal move
-      if (legalmoves.size() == 1) {
-        bestmoves.push_back(legalmoves.front());
-        break;
-      }
-
-      // mate found so prune non-mating moves (TODO: verify)
-      if (get_mate_score(legalmoves.front().first) > 0) {
-        for (auto& move : legalmoves)
-          if (get_mate_score((move.first)) > 0) bestmoves.push_back(move);
-        break;
-      }
+    // if (search_type != Mate && search_type != Infinite) {
+    // no need to seach deeper if there's only one legal move
+    if (legalmoves.size() == 1) {
+      bestmoves.push_back(legalmoves.front());
+      break;
     }
+
+    // mate found so prune non-mating moves (TODO: verify)
+    if (get_mate_score(legalmoves.front().first) > 0) {
+      for (auto& move : legalmoves)
+        if (get_mate_score((move.first)) > 0) bestmoves.push_back(move);
+      break;
+    }
+    // }
 
     if (get_mate_score(legalmoves.back().first) < 0) {
       // there is atleast one non-losing move
@@ -121,27 +170,21 @@ vector<pair<int, Move>> Search::iterative_search() {
       } else {
         // best and worst move is losing, so no point in searching deeper
         for (auto& move : legalmoves) bestmoves.push_back(move);
-        if (search_type != Mate && search_type != Infinite) break;
+        // if (search_type != Mate && search_type != Infinite)
+        break;
       }
     }
 
     for (auto& score_move : legalmoves) {
-      // cout << "searching move: " << board.to_san(score_move.second)
-      //      << " score: " << score_move.first << endl;
-
-      auto t1 = chrono::high_resolution_clock::now();
       nodes_searched = 0;
       board.make_move(score_move.second);
       int score = 0;
-      // score = -alphabeta(depth, -MateScore, +MateScore);
-      // int score2 = -negamax(depth);
       // score = -negamax(depth);
       score = -alphabeta(depth, -MateScore, +MateScore);
       board.unmake_move(score_move.second);
-      auto t2 = chrono::high_resolution_clock::now();
-      auto diff = chrono::duration_cast<chrono::milliseconds>(t2 - t1).count();
-      time_taken += diff;
-
+      time_taken = chrono::duration_cast<chrono::milliseconds>(
+                       chrono::high_resolution_clock::now() - start_time)
+                       .count();
       // break if time is up, but ensure we have atleast one move
       if (!searching || time_taken >= max_search_time)
         if (bestmoves.size() > 1) {
@@ -149,47 +192,27 @@ vector<pair<int, Move>> Search::iterative_search() {
           break;
         }
       score_move.first = score;
-
-      // ofstream log("log.txt", std::ios_base::app);
-      // log << board.to_san(move) << " = " << score << "\n\n";
-      // log.close();}
-      // cout << "info " << board.to_san(score_move.second) << " = " << score2
-      //      << endl;
-      cout << "info searching depth " << depth;
-      print_score(score);
-      // print_score(score2);
-      cout << " nodes " << nodes_searched << " time " << diff << " pv "
-           << board.to_uci(score_move.second) << endl;
-
-      // if (score > bestscore) {
-      // bestscore = score;
-      // bestmove = move;
-      // }
-      bestmoves.push_back({score, score_move.second});
+      print_info("info string", depth, score, nodes_searched, time_taken,
+                 score_move.second.to_uci());
+      bestmoves.emplace_back(score, score_move.second);
     }
 
     // move-ordering
     stable_sort(legalmoves.begin(), legalmoves.end(),
                 [](auto& a, auto& b) { return a.first > b.first; });
 
-    cout << "info depth " << depth;
-    print_score(bestmoves.front().first);
-    cout << " nodes " << nodes_searched << " time "
-         << time_taken - time_taken_depth << " pv "
-         << board.to_uci(bestmoves.front().second) << endl;
-    time_taken_depth = time_taken;
+    time_taken = chrono::duration_cast<chrono::milliseconds>(
+                     chrono::high_resolution_clock::now() - start_time)
+                     .count();
+    print_info("info", depth, legalmoves.front().first, nodes_searched,
+               time_taken, legalmoves.front().second.to_uci());
 
     // TODO: fix this
     if (search_type == Mate)
-      debug = to_string(depth - 2 + get_mate_score(bestmoves.front().first));
+      debug = to_string(get_mate_score(legalmoves.front().first));
   }
 
-  // {
-  //   ofstream log("log.txt", std::ios_base::app);
-  //   log << "best: " << board.to_san(bestmove) << " = " << bestscore <<
-  //   "\n\n"; log.close();
-  // }
-  cout << "info total time: " << time_taken << endl;
+  cout << "info total time: " << time_taken << "\n";
 
   // TODO: choose random move out of same-scoring moves
 
@@ -229,11 +252,11 @@ int Search::print_eval() {
 
   board.print();
 
-  cout << "fen: " << board.to_fen() << endl;
-  cout << "material: " << material_score << endl;
-  cout << "position: " << pst_score << endl;
+  cout << "fen: " << board.to_fen() << "\n";
+  cout << "material: " << material_score << "\n";
+  cout << "position: " << pst_score << "\n";
 
-  cout << "is in check: " << is_in_check(board, board.turn) << endl;
+  cout << "is in check: " << is_in_check(board, board.turn) << "\n";
 
   return material_score + pst_score + mobility_score;
 }
@@ -297,7 +320,8 @@ int Search::alphabeta(int depth, int alpha, int beta) {
   // return 0;
 
   // TODO: probe TT
-  // return TT_score;
+  const int TT_score = TT_probe(TT, board.zobrist_hash(), depth, alpha, beta);
+  if (TT_score != TT_miss) return TT_score;
 
   if (depth == 0 || depth > max_depth) return quiesce(0, alpha, beta);
 
@@ -310,6 +334,8 @@ int Search::alphabeta(int depth, int alpha, int beta) {
 
   auto legals = generate_legal_moves(board);
 
+  EvalType eval_type = UpperBound;
+
   for (auto& move : legals) {
     board.make_move(move);
     // TODO: late move reduction
@@ -318,9 +344,11 @@ int Search::alphabeta(int depth, int alpha, int beta) {
     board.unmake_move(move);
     if (score > alpha) {
       // TODO: PV update
+      eval_type = Exact;
       alpha = score;
       if (alpha >= beta) {  // fail-high beta-cutoff
-                            // TODO: store TT
+        // TODO: store TT
+        TT_store(TT, board.zobrist_hash(), depth, beta, LowerBound);
         return beta;
       }
     }
@@ -330,6 +358,7 @@ int Search::alphabeta(int depth, int alpha, int beta) {
   if (legals.size() == 0) return in_check ? -MateScore + depth : 0;
 
   // TODO: store TT
+  TT_store(TT, board.zobrist_hash(), depth, alpha, eval_type);
   return alpha;  // fail-low alpha-cutoff
 }
 

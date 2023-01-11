@@ -224,3 +224,18 @@
 	- castling move generation
 	- I didn't check the case where the squares adjacent to the king are attacked by a pawn on the 7th rank
 	- fixed it by using the new `is_in_threat` function
+
+## 12 Jan 2023
+
+### 3 am
+- moved `to_san` function to `Move` class
+- fixed move sorting bug: was considering non-captures first
+- added transposition table
+	- hash table that stores scores of recently searched positions
+- replaced `endl` with "\n" (idk if it improves performance)
+- BUGFIX:
+	- mate score was displayed wrong
+- TODO:
+	- thoroughly test TT
+	- incremental zobrist hashing
+- TT is working, I'm happy :)

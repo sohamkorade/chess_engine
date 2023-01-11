@@ -75,7 +75,7 @@ void update_board() {
       premove.from = 63 - premove.from;
       premove.to = 63 - premove.to;
     }
-    show_statusbar_msg("Moved " + g.board.to_san(last));
+    show_statusbar_msg("Moved " + to_san(g.board, last));
   } else
     show_statusbar_msg("");
   for (int i = 0; i < 64; i++) {

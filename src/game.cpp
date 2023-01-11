@@ -41,7 +41,7 @@ void Game::next() {
 
 void Game::print_movelist() {
   for (size_t i = 0; i < movelist.size(); i++) {
-    cerr << i + 1 << " " << board.to_san(movelist[i]) << "    ";
+    cerr << i + 1 << " " << to_san(board, movelist[i]) << "    ";
     movelist[i].print();
   }
 }
@@ -51,7 +51,7 @@ void Game::print_pgn() {
   seek(0);
   for (int i = 0; i < end; i++) {
     if (ply % 2 == 0) cerr << (ply / 2 + 1) << ".";
-    cerr << board.to_san(movelist[ply]) << " ";
+    cerr << to_san(board, movelist[ply]) << " ";
     next();
   }
 }
