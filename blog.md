@@ -239,3 +239,12 @@
 	- thoroughly test TT
 	- incremental zobrist hashing
 - TT is working, I'm happy :)
+
+## 10 Feb 2023
+- another bugfix:
+	- was generating only one en passant capture
+	- similar to old one side castling bug
+	- `else` was the culprit
+	- fixed
+- perft test now takes maxnodes as first arg
+- ran all perft tests, all passed at full depth!

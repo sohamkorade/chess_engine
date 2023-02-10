@@ -8,7 +8,10 @@
 int perft(int argc, char* argv[]) {
   // cout.setstate(ios_base::failbit);
   string filename = "../tests/perftsuite.epd";
-  if (argc > 1) filename = argv[1];
+  int maxnodes = INT_MAX;  // 1e6;
+  if (argc > 1) maxnodes = stoi(argv[1]);
+  if (argc > 2) filename = argv[2];
+
   ifstream epd(filename);
   Board board;
   string line;
@@ -33,7 +36,7 @@ int perft(int argc, char* argv[]) {
       cout << parts[i] << endl;
       int expected = stoi(parts[i].substr(parts[i].find(" ") + 1));
       cout << "               ";
-      if (expected > 1e6) {
+      if (expected > maxnodes) {
         cout << "skipped" << endl;
         continue;
       }

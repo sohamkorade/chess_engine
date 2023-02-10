@@ -132,7 +132,7 @@ void generate_promotions_and_ep(Board& board, vector<Move>& pseudo) {
     if (is_occupied<rel_SE, rel_P>(board.board, ep_sq))
       pseudo.emplace_back(ep_sq + rel_SE, ep_sq, Empty, Empty, true);
     // capture enpassant NE
-    else if (is_occupied<rel_SW, rel_P>(board.board, ep_sq))
+    if (is_occupied<rel_SW, rel_P>(board.board, ep_sq))
       pseudo.emplace_back(ep_sq + rel_SW, ep_sq, Empty, Empty, true);
   }
 }
