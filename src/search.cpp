@@ -81,8 +81,8 @@ pair<Move, int> Search::search() {
     if (bestmove.from != bestmove.to) break;
   }
   cout << "info bestmove: " << bestscore << " = " << to_san(board, bestmove)
-       << " out of " << movelist.size() << "\n";
-  cout << "bestmove " << bestmove.to_uci() << "\n";
+       << " out of " << movelist.size() << endl;
+  cout << "bestmove " << bestmove.to_uci() << endl;
   return {bestmove, bestscore};
 }
 
@@ -107,7 +107,7 @@ void print_info(string infostring, int depth, int score, int nodes_searched,
   cout << infostring << " depth " << depth;
   print_score(score);
   cout << " nodes " << nodes_searched << " time " << time_taken << " pv "
-       << move << "\n";
+       << move << endl;
 }
 
 // TODO: verify thoroughly
@@ -117,17 +117,17 @@ vector<pair<int, Move>> Search::iterative_search() {
   int max_search_time = (board.turn == White) ? (wtime + winc) : (btime + binc);
   if (search_type == Fixed_depth) {
     max_search_time = INT_MAX;
-    cout << "info using maxdepth: " << max_depth << "\n";
+    cout << "info using maxdepth: " << max_depth << endl;
   } else if (search_type == Time_per_move) {
     max_search_time = mtime;
-    cout << "info using movetime: " << max_search_time << "\n";
+    cout << "info using movetime: " << max_search_time << endl;
   } else if (search_type == Time_per_game) {
     double percentage = 1;  // 0.88;
     max_search_time *= min((percentage + board.moves / 116.4) / 50, percentage);
-    cout << "info using time: " << max_search_time << "\n";
+    cout << "info using time: " << max_search_time << endl;
   } else {
     max_search_time = INT_MAX;
-    cout << "info using infinite: " << max_search_time << "\n";
+    cout << "info using infinite: " << max_search_time << endl;
   }
 
   const auto start_time = chrono::high_resolution_clock::now();
@@ -212,7 +212,7 @@ vector<pair<int, Move>> Search::iterative_search() {
       debug = to_string(get_mate_score(legalmoves.front().first));
   }
 
-  cout << "info total time: " << time_taken << "\n";
+  cout << "info total time: " << time_taken << endl;
 
   // TODO: choose random move out of same-scoring moves
 
@@ -252,11 +252,11 @@ int Search::print_eval() {
 
   board.print();
 
-  cout << "fen: " << board.to_fen() << "\n";
-  cout << "material: " << material_score << "\n";
-  cout << "position: " << pst_score << "\n";
+  cout << "fen: " << board.to_fen() << endl;
+  cout << "material: " << material_score << endl;
+  cout << "position: " << pst_score << endl;
 
-  cout << "is in check: " << is_in_check(board, board.turn) << "\n";
+  cout << "is in check: " << is_in_check(board, board.turn) << endl;
 
   return material_score + pst_score + mobility_score;
 }

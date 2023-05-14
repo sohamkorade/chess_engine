@@ -294,7 +294,7 @@ void square_click(GtkWidget *widget, gpointer data) {
 //   int sq = GPOINTER_TO_INT(data);
 //   if (sq >= 0 && sq < 64) {
 //     sel_sq = sq;
-//     cout << "drop " << sq << "\n";
+//     cout << "drop " << sq << endl;
 //     // move_intent(sq);
 //   } else
 //     return FALSE;

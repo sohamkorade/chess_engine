@@ -116,10 +116,10 @@ void uci_loop() {
       // additional commands
     } else if (token == "pseudo") {
       for (auto& move : generate_pseudo_moves(board))
-        cout << to_san(board, move) << "\n";
+        cout << to_san(board, move) << endl;
     } else if (token == "legal") {
       for (auto& move : generate_legal_moves(board))
-        cout << to_san(board, move) << "\n";
+        cout << to_san(board, move) << endl;
     } else if (token == "lichess") {
       string fen = board.to_fen();
       replace(fen.begin(), fen.end(), ' ', '_');
