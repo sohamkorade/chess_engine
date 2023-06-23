@@ -248,3 +248,10 @@
 	- fixed
 - perft test now takes maxnodes as first arg
 - ran all perft tests, all passed at full depth!
+
+## 15 May 2023
+
+### 2:45 am
+- changed "\n" to endl, maybe solves the issue of not getting the bestmove detected by GUIs
+- program still reports incorrect mate scores
+- __TODO__: fix mate score
