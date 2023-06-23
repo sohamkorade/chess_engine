@@ -153,7 +153,6 @@ void uci_loop() {
 }
 
 int main() {
-  srand(time(0));
   zobrist_init();
   uci_loop();
 }

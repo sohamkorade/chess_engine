@@ -445,7 +445,6 @@ static void activate(GtkApplication *app, gpointer user_data) {
 }
 
 int main(int argc, char **argv) {
-  srand(time(0));
   GtkApplication *app =
       gtk_application_new("org.soham.chess", G_APPLICATION_FLAGS_NONE);
   g_signal_connect(app, "activate", G_CALLBACK(activate), NULL);

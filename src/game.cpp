@@ -4,6 +4,7 @@
 
 Game::Game() { new_game(); }
 
+// TODO: fix infinite recursion
 bool Game::make_move(string m) { return make_move(m); }
 
 bool Game::make_move(Move m) {
@@ -64,7 +65,9 @@ Move Game::random_move() {
   vector<Move> legal = generate_legal_moves(board);
   Move bestmove;
   if (legal.size() > 0) {
-    bestmove = legal[rand() % legal.size()];
+    random_device rd;
+    uniform_int_distribution<int> dist(0, legal.size() - 1);
+    bestmove = legal[dist(rd)];
   }
   return bestmove;
 }
