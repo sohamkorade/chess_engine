@@ -324,6 +324,10 @@ vector<Move> generate_legal_moves(Board& board) {
   better_moves.reserve(movelist.size());
   others.reserve(movelist.size());
 
+  // split movelist into better_moves and others
+  // better_moves are captures, promotions, enpassant, castling
+  // finally combine both
+
   for (auto& move : movelist) {
     if (is_legal<turn>(board, move))
       (board[move.to] != Empty || move.promotion != Empty || move.enpassant ||
