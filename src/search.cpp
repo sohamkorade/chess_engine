@@ -221,54 +221,16 @@ vector<pair<int, Move>> Search::iterative_search() {
   return bestmoves;
 }
 
-int Search::print_eval() {
-  int material_score = 0;
-  int pst_score = 0;
-  int mobility_score = 0;
-  int queens = 0;
-  for (int i = 0; i < 64; i++) {
-    const Piece piece = board.board[i];
-    if (abs(piece) == wQ) queens++;
-    material_score += piece_val[piece + 6];
-    if (piece)
-      pst_score +=
-          pst[abs(piece) - 1][piece > 0 ? i : 63 - i] * (piece > 0 ? 1 : -1);
-  }
+template int Search::eval<true>();   // prints eval
+template int Search::eval<false>();  // doesn't print eval
 
-  board.print();
-
-  if (queens == 0) {  // assume near endgame
-    pst_score += pst_k_end[board.Kpos] - pst_k_end[63 - board.kpos];
-    // https://www.chessprogramming.org/Mop-up_Evaluation
-    const int cmd =
-        (material_score > 0 ? pst_cmd[board.Kpos] : pst_cmd[63 - board.kpos]);
-    const int file1 = board.Kpos % 8, rank1 = board.Kpos / 8;
-    const int file2 = board.kpos % 8, rank2 = board.kpos / 8;
-    const int md = abs(rank2 - rank1) + abs(file2 - file1);
-    pst_score += (5 * cmd + 2 * (14 - md)) * 10;
-    cout << "endgame score: " << 5 * cmd + 2 * (14 - md) << endl;
-  }
-
-  // int rel_mobility = board.generate_legal_moves().size();
-  // board.change_turn();
-  // int opp_mobility = board.generate_legal_moves().size();
-  // board.change_turn();
-  // mobility_score = (rel_mobility - opp_mobility) * board.turn;
-
-  cout << "fen: " << board.to_fen() << endl;
-  cout << "material: " << material_score << endl;
-  cout << "position: " << pst_score << endl;
-
-  cout << "is in check: " << is_in_check(board, board.turn) << endl;
-
-  return material_score + pst_score + mobility_score;
-}
-
+template <bool debug>
 inline int Search::eval() {
   int material_score = 0;
   int pst_score = 0;
   int mobility_score = 0;
   int queens = 0;
+  int endgame_score = 0;
   for (int i = 0; i < 64; i++) {
     const Piece piece = board.board[i];
     if (abs(piece) == wQ) queens++;
@@ -286,7 +248,8 @@ inline int Search::eval() {
     const int file1 = board.Kpos % 8, rank1 = board.Kpos / 8;
     const int file2 = board.kpos % 8, rank2 = board.kpos / 8;
     const int md = abs(rank2 - rank1) + abs(file2 - file1);
-    pst_score += (5 * cmd + 2 * (14 - md)) * 10;
+    endgame_score = (5 * cmd + 2 * (14 - md)) * 10;
+    pst_score += endgame_score;
   }
 
   // int rel_mobility = board.generate_legal_moves().size();
@@ -295,11 +258,20 @@ inline int Search::eval() {
   // board.change_turn();
   // mobility_score = (rel_mobility - opp_mobility) * board.turn;
 
+  if (debug) {
+    board.print();
+    cout << "material: " << material_score << endl;
+    cout << "position: " << pst_score << endl;
+    cout << "endgame score: " << endgame_score << endl;
+
+    cout << "is in check: " << is_in_check(board, board.turn) << endl;
+  }
+
   return material_score + pst_score + mobility_score;
 }
 
 int Search::negamax(int depth) {
-  if (depth == 0) return eval() * board.turn;
+  if (depth == 0) return eval<false>() * board.turn;
   int bestscore = -MateScore;
   auto legals = generate_legal_moves(board);
   for (auto& move : legals) {
@@ -366,9 +338,10 @@ int Search::alphabeta(int depth, int alpha, int beta) {
 }
 
 int Search::quiesce(int depth, int alpha, int beta) {
-  if (depth > max_depth) return eval() * board.turn;
+  int stand_pat = eval<false>() * board.turn;
 
-  int stand_pat = eval() * board.turn;
+  if (depth > max_depth) return stand_pat;  // max depth reached
+
   if (stand_pat >= beta) {  // fail-high beta-cutoff
     return beta;
   }

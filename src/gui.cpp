@@ -212,7 +212,7 @@ void make_move(Move m) {
   update_gui();
   Search ai;
   ai.board = g.board;
-  ai.print_eval();
+  ai.eval<true>();
   if (g.result != Undecided) return;
   computer_move();
   make_legal_move(premove);

@@ -139,7 +139,7 @@ void uci_loop() {
       }
       board.load_startpos();
     } else if (token == "eval") {
-      ai.print_eval();
+      ai.eval<true>();
     } else if (token == "isincheck") {
       cout << is_in_check(board, board.turn) << endl;
     } else if (token == "turn") {

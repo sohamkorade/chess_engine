@@ -31,10 +31,10 @@ class Search {
   Search();
   pair<Move, int> search();
   void set_clock(int _wtime, int _btime, int _winc, int _binc);
-  int print_eval();
+  template <bool debug>
+  int eval();
 
  protected:
-  int eval();
   int negamax(int depth);
   int alphabeta(int depth, int alpha, int beta);
   int quiesce(int depth, int alpha, int beta);
