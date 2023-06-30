@@ -255,3 +255,9 @@
 - changed "\n" to endl, maybe solves the issue of not getting the bestmove detected by GUIs
 - program still reports incorrect mate scores
 - __TODO__: fix mate score
+
+## 30 Jun 2023
+
+### 9:45 pm
+- remove unnecessary condition in search function (depth > max_depth) which cannot occur
+- increased position eval score weight in endgame

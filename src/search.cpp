@@ -2,7 +2,7 @@
 
 #include "knowledge.hpp"
 
-const int MateScore = 1000000;
+const int MateScore = 1e6;
 const int TT_miss = 404000;
 int TT_size = 1 << 16;
 
@@ -51,7 +51,9 @@ inline void TT_store(TT_t TT, u_int64_t hash, int depth, int score,
   entry->eval_type = eval_type;
 }
 
-Search::Search() { init_TT(TT, TT_size); }
+Search::Search() {
+  // init_TT(TT, TT_size);
+}
 
 void Search::set_clock(int _wtime, int _btime, int _winc, int _binc) {
   wtime = _wtime;
@@ -233,6 +235,8 @@ int Search::print_eval() {
           pst[abs(piece) - 1][piece > 0 ? i : 63 - i] * (piece > 0 ? 1 : -1);
   }
 
+  board.print();
+
   if (queens == 0) {  // assume near endgame
     pst_score += pst_k_end[board.Kpos] - pst_k_end[63 - board.kpos];
     // https://www.chessprogramming.org/Mop-up_Evaluation
@@ -241,7 +245,8 @@ int Search::print_eval() {
     const int file1 = board.Kpos % 8, rank1 = board.Kpos / 8;
     const int file2 = board.kpos % 8, rank2 = board.kpos / 8;
     const int md = abs(rank2 - rank1) + abs(file2 - file1);
-    pst_score += 5 * cmd + 2 * (14 - md);
+    pst_score += (5 * cmd + 2 * (14 - md)) * 10;
+    cout << "endgame score: " << 5 * cmd + 2 * (14 - md) << endl;
   }
 
   // int rel_mobility = board.generate_legal_moves().size();
@@ -249,8 +254,6 @@ int Search::print_eval() {
   // int opp_mobility = board.generate_legal_moves().size();
   // board.change_turn();
   // mobility_score = (rel_mobility - opp_mobility) * board.turn;
-
-  board.print();
 
   cout << "fen: " << board.to_fen() << endl;
   cout << "material: " << material_score << endl;
@@ -279,11 +282,11 @@ inline int Search::eval() {
     pst_score += pst_k_end[board.Kpos] - pst_k_end[63 - board.kpos];
     // https://www.chessprogramming.org/Mop-up_Evaluation
     const int cmd =
-        (material_score > 0 ? pst_cmd[board.Kpos] : pst_cmd[63 - board.kpos]);
+        (board.turn == White ? pst_cmd[board.Kpos] : pst_cmd[63 - board.kpos]);
     const int file1 = board.Kpos % 8, rank1 = board.Kpos / 8;
     const int file2 = board.kpos % 8, rank2 = board.kpos / 8;
     const int md = abs(rank2 - rank1) + abs(file2 - file1);
-    pst_score += 5 * cmd + 2 * (14 - md);
+    pst_score += (5 * cmd + 2 * (14 - md)) * 10;
   }
 
   // int rel_mobility = board.generate_legal_moves().size();
@@ -320,10 +323,10 @@ int Search::alphabeta(int depth, int alpha, int beta) {
   // return 0;
 
   // TODO: probe TT
-  const int TT_score = TT_probe(TT, board.zobrist_hash(), depth, alpha, beta);
-  if (TT_score != TT_miss) return TT_score;
+  // const int TT_score = TT_probe(TT, board.zobrist_hash(), depth, alpha,
+  // beta); if (TT_score != TT_miss) return TT_score;
 
-  if (depth == 0 || depth > max_depth) return quiesce(0, alpha, beta);
+  if (depth == 0) return quiesce(0, alpha, beta);
 
   bool in_check = is_in_check(board, board.turn);
 
@@ -334,7 +337,7 @@ int Search::alphabeta(int depth, int alpha, int beta) {
 
   auto legals = generate_legal_moves(board);
 
-  EvalType eval_type = UpperBound;
+  // EvalType eval_type = UpperBound;
 
   for (auto& move : legals) {
     board.make_move(move);
@@ -344,11 +347,11 @@ int Search::alphabeta(int depth, int alpha, int beta) {
     board.unmake_move(move);
     if (score > alpha) {
       // TODO: PV update
-      eval_type = Exact;
+      // eval_type = Exact;
       alpha = score;
       if (alpha >= beta) {  // fail-high beta-cutoff
-        // TODO: store TT
-        TT_store(TT, board.zobrist_hash(), depth, beta, LowerBound);
+        // // TODO: store TT
+        // TT_store(TT, board.zobrist_hash(), depth, beta, LowerBound);
         return beta;
       }
     }
@@ -357,8 +360,8 @@ int Search::alphabeta(int depth, int alpha, int beta) {
   // checkmate or stalemate
   if (legals.size() == 0) return in_check ? -MateScore + depth : 0;
 
-  // TODO: store TT
-  TT_store(TT, board.zobrist_hash(), depth, alpha, eval_type);
+  // // TODO: store TT
+  // TT_store(TT, board.zobrist_hash(), depth, alpha, eval_type);
   return alpha;  // fail-low alpha-cutoff
 }
 
@@ -379,7 +382,7 @@ int Search::quiesce(int depth, int alpha, int beta) {
   auto legals = generate_legal_moves(board);
 
   for (auto& move : legals) {
-    if (board[move.to] == Empty) continue;  // ignore quiet moves
+    if (board[move.to] == Empty) continue;  // ignore non-capturing moves
     board.make_move(move);
     int score = -quiesce(depth + 1, -beta, -alpha);
     board.unmake_move(move);
