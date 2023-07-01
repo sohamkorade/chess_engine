@@ -274,3 +274,15 @@
 ### 7 am
 - added tapered eval, now the engine can play endgames better!
 - I am astonished by the level at which the engine is playing now! Earlier it was making blunders in endgames, but now it is playing so well! I'm so happy :D
+
+### morning
+- NEW FEATURES:
+	- MADE GUI USABLE AGAIN!
+	- choose random out of best-scoring moves
+	- can connect to external engines (decoupled my own engine from the GUI, yet to test thoroughly)
+- fixed infinite recursion bug in a function (although that function was never called)
+- fixed usage of `to_san` function, it should be called only before making the move on the board
+- draw by repetition yet to be tested in GUI
+- main bug was that the `zobrist_init` function was not called at the start of the game, so the hash was same for all positions. Hours of debugging and it was just a single line of code! LOL!!
+- removed unnecessary include in `main.cpp` and also in Makefile
+- separated out `get_move_if_legal` from `make_move_if_legal`, it was required elsewhere
