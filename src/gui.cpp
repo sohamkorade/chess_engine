@@ -18,6 +18,7 @@ atomic<bool> thinking = false;
 int ai_think_time = 5000;
 
 enum MoveType { Human, Computer, PreMove };
+enum PlayerType { HumanPlayer, RandomMover, AIPlayer };
 
 bool board_flipped = false;
 int sel_sq = -1, prom_sq = -1;
@@ -26,14 +27,17 @@ map<int, Move> promotions;
 set<int> valid_sqs, valid_capture_sqs;
 
 bool disable_engine = false;
+bool game_running = false;
 Move premove;
 
 GtkWidget *squares[64], *chess_board_grid, *statusbar, *move_label;
 GtkEntryBuffer *fen_entry_buffer;
 GtkWidget *white_human, *white_randommover, *white_ai, *black_human,
-    *black_randommover, *black_ai, *stop_think, *eval_bar, *ai_time_scale;
+    *black_randommover, *black_ai, *stop_think, *start_game, *eval_bar,
+    *ai_time_scale;
 
 void computer_move();
+void move_manager();
 void make_move(Move m, MoveType type);
 
 int flipped(int sq) { return board_flipped ? 63 - sq : sq; }
@@ -54,7 +58,7 @@ void generate_move_hints() {
   Board temp = g.board;
   if (thinking) temp.change_turn();
   // TODO: generate all possible moves even non-existent pawn captures
-  moves = thinking ? generate_legal_moves(temp) : generate_pseudo_moves(temp);
+  moves = !thinking ? generate_legal_moves(temp) : generate_pseudo_moves(temp);
   valid_sqs.clear();
   valid_capture_sqs.clear();
   for (auto &move : moves)
@@ -99,9 +103,7 @@ void update_board() {
       gtk_widget_add_css_class(squares[j], "valid_capture_sq");
   }
   int K_pos = g.board.turn == White ? g.board.Kpos : g.board.kpos;
-  if (~K_pos &&
-      (g.board.turn == White ? is_in_threat<White>(g.board.board, K_pos)
-                             : is_in_threat<Black>(g.board.board, K_pos))) {
+  if (~K_pos && is_in_check(g.board, g.board.turn)) {
     gtk_widget_add_css_class(squares[flipped(K_pos)], "check_sq");
   }
 }
@@ -160,13 +162,26 @@ void stop_think_click() {
   disable_engine = !disable_engine;
   gtk_button_set_label(GTK_BUTTON(stop_think),
                        disable_engine ? "Enable AI" : "Disable AI");
-  // set progress bar to full
   if (disable_engine) {
-    gtk_progress_bar_set_fraction(GTK_PROGRESS_BAR(eval_bar), 1);
+    gtk_progress_bar_set_fraction(GTK_PROGRESS_BAR(eval_bar), 0);
     thinking = false;
     if (ai_thread.joinable()) ai_thread.join();
   } else
     computer_move();
+}
+void start_game_click() {
+  game_running = !game_running;
+  gtk_button_set_label(GTK_BUTTON(start_game),
+                       game_running ? "Pause Game" : "Start Game");
+  if (game_running) {
+    g_timeout_add(
+        500,
+        [](gpointer data) {
+          move_manager();
+          return game_running ? G_SOURCE_CONTINUE : G_SOURCE_REMOVE;
+        },
+        NULL);
+  }
 }
 void fen_apply_click() {
   if (g.load_fen(gtk_entry_buffer_get_text(GTK_ENTRY_BUFFER(fen_entry_buffer))))
@@ -183,17 +198,17 @@ void ai_level_change() {
 }
 
 void computer_move() {
-  if (disable_engine) {
-    show_statusbar_msg("Please enable AI.");
-    return;
-  }
-  show_statusbar_msg("Thinking...");
   if (gtk_check_button_get_active(GTK_CHECK_BUTTON(
           g.board.turn == White ? white_randommover : black_randommover))) {
     make_move(g.random_move(), Computer);
   } else if (gtk_check_button_get_active(GTK_CHECK_BUTTON(
                  g.board.turn == White ? white_ai : black_ai))) {
     if (thinking) return;
+    if (disable_engine) {
+      show_statusbar_msg("Please enable AI.");
+      return;
+    }
+    show_statusbar_msg("Thinking...");
     // start a timer to complete the progress bar after `ai_think_time` ms
     gtk_progress_bar_set_fraction(GTK_PROGRESS_BAR(eval_bar), 0);
     g_timeout_add(
@@ -223,28 +238,32 @@ bool is_legal(Move m) {
 }
 
 void make_move(Move m, MoveType type) {
-  if (g.result != Undecided) return;
-  if (thinking) return;
   if (!is_legal(m)) return;
-
   if (!g.make_move(m)) return;
 
-  valid_sqs.clear();
-  valid_capture_sqs.clear();
+  if (type == PreMove) {
+    premove = Move();
+  }
+  if (type == Human) {
+    valid_sqs.clear();
+    valid_capture_sqs.clear();
+  }
+
   update_gui();
+}
 
-  // creates deadlock for some reason :(
-  // if (type == Computer && premove.from != premove.to) {
-  //   auto temp = premove;
-  //   premove = Move();
-  //   make_move(temp, PreMove);
-  //   return;
-  // }
-  premove = Move();  // reset premove
+void pre_move() {
+  if (premove.from == premove.to) return;
+  make_move(premove, PreMove);
+}
 
+void move_manager() {
+  if (g.result != Undecided) {
+    start_game_click();
+    return;
+  }
   computer_move();
-
-  update_gui();
+  pre_move();
 }
 
 void move_intent(int sq) {
@@ -367,15 +386,15 @@ GtkWidget *navigation_buttons() {
   GtkWidget *prev = gtk_button_new_from_icon_name("go-previous");
   GtkWidget *next = gtk_button_new_from_icon_name("go-next");
   GtkWidget *last = gtk_button_new_from_icon_name("go-last");
-  GtkWidget *flip = gtk_button_new_with_label("Flip board");
-  GtkWidget *lichess = gtk_button_new_with_label("Open in lichess");
+  GtkWidget *flip = gtk_button_new_with_label("Flip Board");
+  GtkWidget *lichess = gtk_button_new_with_label("Open in LiChess");
   GtkWidget *copypgn = gtk_button_new_with_label("Copy PGN");
-  GtkWidget *newgame = gtk_button_new_with_label("New game");
+  GtkWidget *newgame = gtk_button_new_with_label("New Game");
   stop_think = gtk_button_new_with_label("Disable AI");
+  start_game = gtk_button_new_with_label("Start Game");
   eval_bar = gtk_progress_bar_new();
   ai_time_scale =
       gtk_scale_new_with_range(GTK_ORIENTATION_HORIZONTAL, 1000, 10000, 100);
-  ai_level_change();
   gtk_range_set_value(GTK_RANGE(ai_time_scale), ai_think_time);
   GtkWidget *ai_time_scale_label = gtk_label_new("AI thinking time (ms)");
 
@@ -397,6 +416,7 @@ GtkWidget *navigation_buttons() {
   gtk_grid_attach(GTK_GRID(grid), eval_bar, 1, 10, 4, 1);
   gtk_grid_attach(GTK_GRID(grid), ai_time_scale_label, 1, 11, 4, 1);
   gtk_grid_attach(GTK_GRID(grid), ai_time_scale, 1, 12, 4, 1);
+  gtk_grid_attach(GTK_GRID(grid), start_game, 1, 13, 4, 1);
 
   g_signal_connect(first, "clicked", G_CALLBACK(first_click), NULL);
   g_signal_connect(prev, "clicked", G_CALLBACK(prev_click), NULL);
@@ -409,6 +429,7 @@ GtkWidget *navigation_buttons() {
   g_signal_connect(stop_think, "clicked", G_CALLBACK(stop_think_click), NULL);
   g_signal_connect(ai_time_scale, "value-changed", G_CALLBACK(ai_level_change),
                    NULL);
+  g_signal_connect(start_game, "clicked", G_CALLBACK(start_game_click), NULL);
 
   gtk_widget_set_margin_start(grid, 5);
 
