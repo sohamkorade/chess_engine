@@ -26,6 +26,7 @@ class Search {
   TT_t TT;
   int nodes_searched = 0;
   int ply = 0;
+  bool debug_mode = false;
 
   string debug = "";
 

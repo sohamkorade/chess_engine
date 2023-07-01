@@ -264,3 +264,6 @@
 - corrected 'losing king' to mean the opponent's king in endgame pos eval
 - `ply` count now replaces depth to calculate mate score
 	- Finally now the engine outputs correct mate scores! The bug was due to `depth` being used instead of `ply`. `depth` doesn't increase linearly with `ply`, so it was giving wrong mate scores (because quiescence search, check extensions, etc. make it unpredictable).
+
+### 5:50 am
+- `debug_mode` actually works now

@@ -2,7 +2,6 @@
 #include "game.hpp"
 #include "search.hpp"
 
-bool debug_mode = false;
 thread ai_thread;
 
 void parse_and_make_moves(istringstream& iss, Board& board,
@@ -103,7 +102,8 @@ void uci_loop() {
     } else if (token == "ponderhit") {
     } else if (token == "debug") {
       iss >> token;
-      debug_mode = token == "on";
+      ai.debug_mode = token == "on";
+      cout << "debug mode: " << (ai.debug_mode ? "on" : "off") << endl;
     } else if (token == "isready") {
       cout << "readyok" << endl;
     } else if (token == "setoption") {

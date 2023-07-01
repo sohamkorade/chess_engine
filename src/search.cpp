@@ -200,8 +200,9 @@ vector<pair<int, Move>> Search::iterative_search() {
         break;
       }
       score_move.first = score;
-      print_info("info string", depth, score, nodes_searched, time_taken,
-                 score_move.second.to_uci());
+      if (debug_mode)
+        print_info("info string", depth, score, nodes_searched, time_taken,
+                   score_move.second.to_uci());
       bestmoves.emplace_back(score, score_move.second);
     }
 
