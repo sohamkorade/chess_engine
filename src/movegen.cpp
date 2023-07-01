@@ -349,6 +349,13 @@ vector<Move> generate_legal_moves(Board& board) {
 }
 
 bool make_move_if_legal(Board& board, string move) {
+  auto m = get_move_if_legal(board, move);
+  if (m.equals(0, 0)) return false;
+  board.make_move(m);
+  return true;
+}
+
+Move get_move_if_legal(Board& board, string move) {
   int l = move.length();
   if (l == 4 || l == 5) {
     const int from = sq2idx(move[0], move[1]);
@@ -359,13 +366,13 @@ bool make_move_if_legal(Board& board, string move) {
           char2piece(board.turn == White ? toupper(move[4]) : tolower(move[4]));
     for (auto& m : generate_legal_moves(board))
       if (m.equals(from, to) && m.promotion == promotion) {
-        board.make_move(m);
-        return true;
+        return m;
       }
   }
-  return false;
+  return Move();
 }
 
+// NOTE: to be called before making the move
 string to_san(Board& board, Move move) {
   string san;
   // castling
