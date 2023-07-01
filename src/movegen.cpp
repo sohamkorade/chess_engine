@@ -382,7 +382,7 @@ string to_san(Board& board, Move move) {
     else if (move.equals(4, 2) || move.equals(60, 58))
       san = "O-O-O";
   } else {
-    char piece = toupper(piece2char(board.board[move.from]));
+    char piece = toupper(piece2char(board[move.from]));
     string origin = idx2sq(move.from);
     string target = idx2sq(move.to);
 
@@ -390,12 +390,13 @@ string to_san(Board& board, Move move) {
     if (piece != 'P') san = piece;
 
     // disambiguation
-    bool same_file = false, same_rank = false;
+    bool same_file = false, same_rank = false, same_piece = false;
     for (auto& move2 : generate_pseudo_moves(board)) {
       if (move2.from != move.from)                    // don't compare to self
         if (move2.to == move.to)                      // same destination
           if (board[move2.from] == board[move.from])  // same kind of piece
           {
+            same_piece = true;
             if (move2.from / 8 == move.from / 8)  // same rank
               same_file = true;
             if (move2.from % 8 == move.from % 8)  // same file
@@ -404,6 +405,8 @@ string to_san(Board& board, Move move) {
     }
     if (same_file && piece != 'P') san += origin[0];  // add file, if not pawn
     if (same_rank) san += origin[1];                  // add rank
+    if (!same_file && !same_rank && same_piece)       // add file, e.g. knights
+      san += origin[0];
 
     // capture
     if (!board.empty(move.to) || move.enpassant) {
