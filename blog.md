@@ -286,3 +286,9 @@
 - main bug was that the `zobrist_init` function was not called at the start of the game, so the hash was same for all positions. Hours of debugging and it was just a single line of code! LOL!!
 - removed unnecessary include in `main.cpp` and also in Makefile
 - separated out `get_move_if_legal` from `make_move_if_legal`, it was required elsewhere
+
+### evening
+- I let my brother play against the engine, and he won! But found a bug in the endgame.
+- FEN: 5rk1/2RR1p1p/2p3p1/8/8/p3PK1P/2r3P1/8 w - - 0 28
+- Rxf7?? was played, a big blunder! Gotta figure out why.
+- fixed gui bug when the board is flipped

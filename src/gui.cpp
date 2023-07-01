@@ -30,12 +30,15 @@ GtkWidget *white_human, *white_randommover, *white_ai, *black_human,
 void computer_move();
 void make_move(Move m);
 
+int flipped(int sq) { return board_flipped ? 63 - sq : sq; }
+
 void show_statusbar_msg(string s) {
   gtk_statusbar_pop(GTK_STATUSBAR(statusbar), 0);
   gtk_statusbar_push(GTK_STATUSBAR(statusbar), 0, s.c_str());
 }
 
 void update_piece(int sq, Piece piece) {
+  sq = flipped(sq);
   gtk_widget_set_name(squares[sq], "");
   gtk_widget_set_name(squares[sq],
                       string("piece_").append(1, piece2char(piece)).c_str());
@@ -51,8 +54,7 @@ void generate_move_hints() {
   valid_capture_sqs.clear();
   for (auto &move : moves)
     if (move.from == sel_sq)
-      (g.board.empty(move.to) ? valid_sqs : valid_capture_sqs)
-          .insert(board_flipped ? 63 - move.to : move.to);
+      (g.board.empty(move.to) ? valid_sqs : valid_capture_sqs).insert(move.to);
 
   // deselect square if no valid move possible
   if (valid_sqs.size() == 0 && valid_capture_sqs.size() == 0) sel_sq = -1;
@@ -63,53 +65,38 @@ void update_board() {
   if (~sel_sq)
     if (g.result == Undecided) generate_move_hints();
   auto &board = g.board.board;
-  if (board_flipped) {
-    reverse(board, board + 64);
-    if (~sel_sq) sel_sq = 63 - sel_sq;
-  }
+
   int last_from = -1, last_to = -1;
   if (g.ply > 0) {
     Move last = g.movelist[g.ply - 1];
     last_from = last.from;
     last_to = last.to;
-    if (board_flipped) {
-      last_from = 63 - last_from;
-      last_to = 63 - last_to;
-      premove.from = 63 - premove.from;
-      premove.to = 63 - premove.to;
-    }
+
     g.board.unmake_move(last);
     show_statusbar_msg("Moved " + to_san(g.board, last));
     g.board.make_move(last);
   } else
     show_statusbar_msg("");
   for (int i = 0; i < 64; i++) {
+    int j = flipped(i);
     if (!promotions.count(i)) update_piece(i, board[i]);
     for (auto &c : {"selected_sq", "valid_sq", "valid_capture_sq", "check_sq",
                     "premove_sq"})
-      gtk_widget_remove_css_class(squares[i], c);
+      gtk_widget_remove_css_class(squares[j], c);
     if ((premove.from == i) ^ (premove.to == i))
-      gtk_widget_add_css_class(squares[i], "premove_sq");
+      gtk_widget_add_css_class(squares[j], "premove_sq");
     else if (i == sel_sq || i == last_from || i == last_to)
-      gtk_widget_add_css_class(squares[i], "selected_sq");
+      gtk_widget_add_css_class(squares[j], "selected_sq");
     else if (valid_sqs.count(i))
-      gtk_widget_add_css_class(squares[i], "valid_sq");
+      gtk_widget_add_css_class(squares[j], "valid_sq");
     else if (valid_capture_sqs.count(i))
-      gtk_widget_add_css_class(squares[i], "valid_capture_sq");
+      gtk_widget_add_css_class(squares[j], "valid_capture_sq");
   }
   int K_pos = g.board.turn == White ? g.board.Kpos : g.board.kpos;
   if (~K_pos &&
       (g.board.turn == White ? is_in_threat<White>(g.board.board, K_pos)
                              : is_in_threat<Black>(g.board.board, K_pos))) {
-    if (board_flipped) K_pos = 63 - K_pos;
-    gtk_widget_add_css_class(squares[K_pos], "check_sq");
-  }
-
-  if (board_flipped) {
-    reverse(board, board + 64);
-    if (~sel_sq) sel_sq = 63 - sel_sq;
-    premove.from = 63 - premove.from;
-    premove.to = 63 - premove.to;
+    gtk_widget_add_css_class(squares[flipped(K_pos)], "check_sq");
   }
 }
 
@@ -235,9 +222,8 @@ void move_intent(int sq) {
     Direction d = prom_sq / 8 == 0 ? S : N;
     for (size_t i = 0; i < valids.size(); i++) {
       int temp_sq = prom_sq + d * i;
-      if (board_flipped) temp_sq = 63 - temp_sq;
       promotions.insert({temp_sq, valids[i]});
-      gtk_widget_add_css_class(squares[temp_sq], "promotion");
+      gtk_widget_add_css_class(squares[flipped(temp_sq)], "promotion");
       update_piece(temp_sq, valids[i].promotion);
     }
     gtk_widget_add_css_class(chess_board_grid, "promotion");
@@ -252,11 +238,11 @@ void square_click(GtkWidget *widget, gpointer data) {
   if (g.result != Undecided) return;
   premove.from = premove.to;  // reset premove
   int sq = GPOINTER_TO_INT(data);
-  if (board_flipped) sq = 63 - sq;
+  sq = flipped(sq);
   if (~prom_sq) {
     for (auto &x : promotions) {
       if (x.first == sq) make_move(x.second);  // clicked on promotion piece
-      gtk_widget_remove_css_class(squares[x.first], "promotion");
+      gtk_widget_remove_css_class(squares[flipped(x.first)], "promotion");
     }
     gtk_widget_remove_css_class(chess_board_grid, "promotion");
     promotions.clear();
