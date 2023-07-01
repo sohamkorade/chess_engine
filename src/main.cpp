@@ -1,5 +1,4 @@
 #include "board.hpp"
-#include "game.hpp"
 #include "search.hpp"
 
 thread ai_thread;

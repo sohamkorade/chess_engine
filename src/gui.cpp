@@ -5,6 +5,8 @@
 // - show evaluation bar
 // - show move history
 
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+
 #include <gtk/gtk.h>
 
 #include "game.hpp"
@@ -58,7 +60,8 @@ void generate_move_hints() {
 }
 
 void update_board() {
-  if (~sel_sq && g.result == Undecided) generate_move_hints();
+  if (~sel_sq)
+    if (g.result == Undecided) generate_move_hints();
   auto &board = g.board.board;
   if (board_flipped) {
     reverse(board, board + 64);
@@ -75,7 +78,9 @@ void update_board() {
       premove.from = 63 - premove.from;
       premove.to = 63 - premove.to;
     }
+    g.board.unmake_move(last);
     show_statusbar_msg("Moved " + to_san(g.board, last));
+    g.board.make_move(last);
   } else
     show_statusbar_msg("");
   for (int i = 0; i < 64; i++) {
@@ -120,11 +125,6 @@ string get_result_str(Status result) {
 
 void update_gui() {
   update_board();
-  g.result = g.get_result();
-  // if (g.result == Draw) {
-  //   cout << g.ply / 2 + 1 << endl;
-  //   cout << g.board.pos_hash() << endl;
-  // }
 
   string fen = g.board.to_fen();
   gtk_entry_buffer_set_text(fen_entry_buffer, fen.c_str(), fen.length());
@@ -210,9 +210,9 @@ void make_move(Move m) {
   valid_capture_sqs.clear();
   if (!g.make_move(m)) return;
   update_gui();
-  Search ai;
-  ai.board = g.board;
-  ai.eval<true>();
+  // Search ai;
+  // ai.board = g.board;
+  // ai.eval<true>();
   if (g.result != Undecided) return;
   computer_move();
   make_legal_move(premove);
@@ -445,8 +445,9 @@ static void activate(GtkApplication *app, gpointer user_data) {
 }
 
 int main(int argc, char **argv) {
+  zobrist_init();
   GtkApplication *app =
-      gtk_application_new("org.soham.chess", G_APPLICATION_FLAGS_NONE);
+      gtk_application_new("org.soham.chess", G_APPLICATION_DEFAULT_FLAGS);
   g_signal_connect(app, "activate", G_CALLBACK(activate), NULL);
   int status = g_application_run(G_APPLICATION(app), argc, argv);
   g_object_unref(app);

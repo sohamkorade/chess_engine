@@ -20,8 +20,8 @@ alll:
 	$(FLAGS) -o runtest runtest.cpp game.cpp board.cpp movegen.cpp search.cpp
 	$(FLAGS) -o gui gui.cpp game.cpp board.cpp movegen.cpp search.cpp `pkg-config --cflags --libs gtk4`
 
-main: main.o game.o board.o movegen.o search.o
-	$(FLAGS) -o main main.o game.o board.o movegen.o search.o
+main: main.o board.o movegen.o search.o
+	$(FLAGS) -o main main.o board.o movegen.o search.o
 runtest: runtest.o board.o movegen.o search.o
 	$(FLAGS) -o runtest runtest.o board.o movegen.o search.o
 gui: gui.o board.o movegen.o game.o search.o
