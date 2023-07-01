@@ -67,27 +67,19 @@ pair<Move, int> Search::search() {
   auto movelist = iterative_search();
   searching = false;
 
-  int bestscore = -1e8;
-  Move bestmove;
-  for (int i = 1; i >= 0; i--) {
-    for (auto& m : movelist) {
-      board.make_move(m.second);
-      int tp = repetitions.count(board.zobrist_hash());
-      board.unmake_move(m.second);
-      if (tp > i) continue;
-      if (m.first > bestscore) {
-        bestscore = m.first;
-        bestmove = m.second;
-      }
-    }
-    if (bestmove.from != bestmove.to) break;
-  }
+  auto bestmove = movelist.front().second;
+  auto bestscore = movelist.front().first;
+
   cout << "info bestmove: " << bestscore << " = " << to_san(board, bestmove)
        << " out of " << movelist.size() << endl;
   cout << "bestmove " << bestmove.to_uci() << endl;
   return {bestmove, bestscore};
 }
 
+// mate 2: 2K5/8/2k5/1r6/8/8/8/8 b - - 0 1
+// mate -2: 2k5/8/2K5/8/1R6/8/8/8 b - - 0 1
+// mate 1: 2k5/8/2K5/5R2/8/8/8/8 w - - 0 1
+// mate -1: K7/8/1k6/5r2/8/8/8/8 w - - 0 1
 int get_mate_score(int score) {
   if (score > MateScore / 2)
     return (MateScore - score) / 2 + 1;
@@ -114,7 +106,7 @@ void print_info(string infostring, int depth, int score, int nodes_searched,
 
 // TODO: verify thoroughly
 vector<pair<int, Move>> Search::iterative_search() {
-  vector<pair<int, Move>> bestmoves, tempmoves;
+  vector<pair<int, Move>> bestmoves;
   int time_taken = 0;
   int max_search_time = (board.turn == White) ? (wtime + winc) : (btime + binc);
   if (search_type == Fixed_depth) {
@@ -143,62 +135,77 @@ vector<pair<int, Move>> Search::iterative_search() {
   int depth = 1;
   for (; searching && time_taken * 2 < max_search_time && depth <= max_depth;
        depth++) {
-    tempmoves = bestmoves;
     bestmoves.clear();
+
+    auto& curr_best = legalmoves.front();
+    auto& curr_worst = legalmoves.back();
 
     // if (search_type != Mate && search_type != Infinite) {
     // no need to seach deeper if there's only one legal move
     if (legalmoves.size() == 1) {
-      bestmoves.push_back(legalmoves.front());
-      break;
+      // limit search time
+      max_search_time = min(max_search_time, 500);
+      cout << "info only one legal move" << endl;
+      // bestmoves.emplace_back(curr_best);
+      // break;
     }
 
     // mate found so prune non-mating moves (TODO: verify)
-    if (get_mate_score(legalmoves.front().first) > 0) {
+    if (get_mate_score(curr_best.first) > 0) {
       for (auto& move : legalmoves)
-        if (get_mate_score((move.first)) > 0) bestmoves.push_back(move);
+        if (get_mate_score(move.first) > 0) bestmoves.emplace_back(move);
+      cout << "info mate found" << endl;
       break;
     }
     // }
 
-    if (get_mate_score(legalmoves.back().first) < 0) {
+    // worst move is losing so prune losing moves
+    if (get_mate_score(curr_worst.first) < 0) {
       // there is atleast one non-losing move
-      if (get_mate_score(legalmoves.front().first) == 0) {
+      if (get_mate_score(curr_best.first) == 0) {
         // prune losing moves
         for (auto& move : legalmoves)
-          if (get_mate_score(move.first) == 0) bestmoves.push_back(move);
+          if (get_mate_score(move.first) == 0) bestmoves.emplace_back(move);
         if (bestmoves.size() != 0) legalmoves = bestmoves;
         // break;
+        cout << "info pruned losing moves" << endl;
       } else {
         // best and worst move is losing, so no point in searching deeper
-        for (auto& move : legalmoves) bestmoves.push_back(move);
+        for (auto& move : legalmoves) bestmoves.emplace_back(move);
         // if (search_type != Mate && search_type != Infinite)
+        cout << "info all moves are losing" << endl;
         break;
       }
     }
 
     for (auto& score_move : legalmoves) {
       nodes_searched = 0;
+      ply = -1;  // somehow this fixes the reported mate score
+      ply++;
       board.make_move(score_move.second);
       int score = 0;
       // score = -negamax(depth);
       score = -alphabeta(depth, -MateScore, +MateScore);
       board.unmake_move(score_move.second);
+      ply--;
       time_taken = chrono::duration_cast<chrono::milliseconds>(
                        chrono::high_resolution_clock::now() - start_time)
                        .count();
       // break if time is up, but ensure we have atleast one move
-      if (!searching || time_taken >= max_search_time)
-        if (bestmoves.size() > 1) {
-          for (auto& x : tempmoves) bestmoves.push_back(x);
-          break;
+      if (!searching || time_taken >= max_search_time) {
+        if (bestmoves.size() == 0) {
+          for (auto& move : legalmoves) bestmoves.emplace_back(move);
         }
+        cout << "info time is up" << endl;
+        break;
+      }
       score_move.first = score;
       print_info("info string", depth, score, nodes_searched, time_taken,
                  score_move.second.to_uci());
       bestmoves.emplace_back(score, score_move.second);
     }
 
+    if (!searching) break;
     // move-ordering
     stable_sort(legalmoves.begin(), legalmoves.end(),
                 [](auto& a, auto& b) { return a.first > b.first; });
@@ -218,6 +225,10 @@ vector<pair<int, Move>> Search::iterative_search() {
 
   // TODO: choose random move out of same-scoring moves
 
+  // move-ordering
+  stable_sort(bestmoves.begin(), bestmoves.end(),
+              [](auto& a, auto& b) { return a.first > b.first; });
+
   return bestmoves;
 }
 
@@ -231,6 +242,7 @@ inline int Search::eval() {
   int mobility_score = 0;
   int queens = 0;
   int endgame_score = 0;
+
   for (int i = 0; i < 64; i++) {
     const Piece piece = board.board[i];
     if (abs(piece) == wQ) queens++;
@@ -244,7 +256,7 @@ inline int Search::eval() {
     pst_score += pst_k_end[board.Kpos] - pst_k_end[63 - board.kpos];
     // https://www.chessprogramming.org/Mop-up_Evaluation
     const int cmd =
-        (board.turn == White ? pst_cmd[board.Kpos] : pst_cmd[63 - board.kpos]);
+        (board.turn == Black ? pst_cmd[board.Kpos] : pst_cmd[63 - board.kpos]);
     const int file1 = board.Kpos % 8, rank1 = board.Kpos / 8;
     const int file2 = board.kpos % 8, rank2 = board.kpos / 8;
     const int md = abs(rank2 - rank1) + abs(file2 - file1);
@@ -275,15 +287,17 @@ int Search::negamax(int depth) {
   int bestscore = -MateScore;
   auto legals = generate_legal_moves(board);
   for (auto& move : legals) {
+    ply++;
     board.make_move(move);
     int score = -negamax(depth - 1);
     board.unmake_move(move);
+    ply--;
     if (score > bestscore) {
       bestscore = score;
     }
   }
   if (legals.size() == 0)
-    return is_in_check(board, board.turn) ? -MateScore + depth : 0;
+    return is_in_check(board, board.turn) ? -MateScore + ply : 0;
 
   return bestscore;
 }
@@ -312,11 +326,13 @@ int Search::alphabeta(int depth, int alpha, int beta) {
   // EvalType eval_type = UpperBound;
 
   for (auto& move : legals) {
+    ply++;
     board.make_move(move);
     // TODO: late move reduction
     // full window search if not LMR
     score = -alphabeta(depth - 1, -beta, -alpha);
     board.unmake_move(move);
+    ply--;
     if (score > alpha) {
       // TODO: PV update
       // eval_type = Exact;
@@ -330,7 +346,7 @@ int Search::alphabeta(int depth, int alpha, int beta) {
   }
 
   // checkmate or stalemate
-  if (legals.size() == 0) return in_check ? -MateScore + depth : 0;
+  if (legals.size() == 0) return in_check ? -MateScore + ply : 0;
 
   // // TODO: store TT
   // TT_store(TT, board.zobrist_hash(), depth, alpha, eval_type);
@@ -356,9 +372,11 @@ int Search::quiesce(int depth, int alpha, int beta) {
 
   for (auto& move : legals) {
     if (board[move.to] == Empty) continue;  // ignore non-capturing moves
+    ply++;
     board.make_move(move);
     int score = -quiesce(depth + 1, -beta, -alpha);
     board.unmake_move(move);
+    ply--;
     if (score > alpha) {
       alpha = score;
       if (alpha >= beta) {  // fail-high beta-cutoff

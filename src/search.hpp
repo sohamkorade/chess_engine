@@ -25,6 +25,7 @@ class Search {
   multiset<uint64_t> repetitions;  // for checking repetition
   TT_t TT;
   int nodes_searched = 0;
+  int ply = 0;
 
   string debug = "";
 
