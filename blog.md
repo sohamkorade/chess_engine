@@ -270,3 +270,7 @@
 
 ### 6:30 am
 - added 3-fold repetition check, hopefully it works! Earlier I had tried using multiset to store hashes, but I was not sure how to implement it 'inside' search function. Now I'm using a vector to store hashes, and checking for repetitions after every move.
+
+### 7 am
+- added tapered eval, now the engine can play endgames better!
+- I am astonished by the level at which the engine is playing now! Earlier it was making blunders in endgames, but now it is playing so well! I'm so happy :D
