@@ -98,7 +98,9 @@ pair<Move, int> Game::ai_move() {
 #pragma GCC diagnostic ignored "-Wunused-result"
 
   // run the engine
-  system("./main < tempConnection > tempConnection2");
+  string engine_path = "./main";
+  string cmd = engine_path + " < tempConnection > tempConnection2";
+  system(cmd.c_str());
 
   // read the output
   ifstream file2;
