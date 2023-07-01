@@ -70,8 +70,22 @@ pair<Move, int> Search::search() {
   auto bestmove = movelist.front().second;
   auto bestscore = movelist.front().first;
 
+  // choose random move out of same-scoring moves
+  vector<pair<int, Move>> bestmoves;
+  for (auto& score_move : movelist)
+    if (score_move.first == bestscore) bestmoves.emplace_back(score_move);
+
+  if (bestmoves.size() > 1) {
+    random_device rd;
+    uniform_int_distribution<int> dist(0, bestmoves.size() - 1);
+    auto& best = bestmoves[dist(rd)];
+    bestmove = best.second;
+    bestscore = best.first;
+  }
+
   cout << "info bestmove: " << bestscore << " = " << to_san(board, bestmove)
-       << " out of " << movelist.size() << endl;
+       << " out of " << movelist.size() << " legal, " << bestmoves.size()
+       << " best" << endl;
   cout << "bestmove " << bestmove.to_uci() << endl;
   return {bestmove, bestscore};
 }
@@ -171,7 +185,7 @@ vector<pair<int, Move>> Search::iterative_search() {
         cout << "info pruned losing moves" << endl;
       } else {
         // best and worst move is losing, so no point in searching deeper
-        for (auto& move : legalmoves) bestmoves.emplace_back(move);
+        bestmoves = legalmoves;
         // if (search_type != Mate && search_type != Infinite)
         cout << "info all moves are losing" << endl;
         break;
@@ -194,8 +208,9 @@ vector<pair<int, Move>> Search::iterative_search() {
       // break if time is up, but ensure we have atleast one move
       if (!searching || time_taken >= max_search_time) {
         if (bestmoves.size() == 0) {
-          for (auto& move : legalmoves) bestmoves.emplace_back(move);
+          bestmoves = legalmoves;
         }
+        searching = false;
         cout << "info time is up" << endl;
         break;
       }
