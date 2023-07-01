@@ -145,6 +145,9 @@ vector<pair<int, Move>> Search::iterative_search() {
   vector<pair<int, Move>> legalmoves;
   for (auto& move : legals) legalmoves.emplace_back(0, move);
 
+  // conservative time management
+  max_search_time *= 0.9;
+
   // iterative deepening
   int depth = 1;
   for (; searching && time_taken * 2 < max_search_time && depth <= max_depth;
