@@ -295,26 +295,31 @@ inline int Search::eval() {
   const int file1 = board.Kpos % 8, rank1 = board.Kpos / 8;
   const int file2 = board.kpos % 8, rank2 = board.kpos / 8;
   const int md = abs(rank2 - rank1) + abs(file2 - file1);
-  endgame_score += (5 * cmd + 2 * (14 - md)) * 10;
+  endgame_score += (5 * cmd + 2 * (14 - md));
 
   // int rel_mobility = board.generate_legal_moves().size();
   // board.change_turn();
   // int opp_mobility = board.generate_legal_moves().size();
   // board.change_turn();
   // mobility_score = (rel_mobility - opp_mobility) * board.turn;
+  const int score = material_score + pst_score + mobility_score;
+  const int eval = (score * (256 - phase) + endgame_score * phase) / 256;
 
   if (debug) {
     board.print();
     cout << "material: " << material_score << endl;
     cout << "position: " << pst_score << endl;
+    cout << "opening score: " << score << endl;
     cout << "endgame score: " << endgame_score << endl;
+    cout << "phase: " << phase << endl;
+    cout << "adjusted opening score: " << score * (256 - phase) / 256 << endl;
+    cout << "adjusted endgame score: " << endgame_score * phase / 256 << endl;
 
     cout << "is in check: " << is_in_check(board, board.turn) << endl;
     cout << "is repetition: " << is_repetition() << endl;
   }
 
-  const int score = material_score + pst_score + mobility_score;
-  return (score * (256 - phase) + endgame_score * phase) / 256;
+  return eval;
 }
 
 int Search::negamax(int depth) {
@@ -340,8 +345,6 @@ int Search::negamax(int depth) {
 }
 
 int Search::alphabeta(int depth, int alpha, int beta) {
-  nodes_searched++;
-
   if (ply && is_repetition()) return 0;
 
   // TODO: probe TT
@@ -352,6 +355,7 @@ int Search::alphabeta(int depth, int alpha, int beta) {
 
   bool in_check = is_in_check(board, board.turn);
 
+  nodes_searched++;
   // check extension
   if (in_check) depth++;
 
@@ -403,7 +407,6 @@ int Search::quiesce(int depth, int alpha, int beta) {
   if (stand_pat > alpha) {  // fail-low alpha-cutoff
     alpha = stand_pat;
   }
-
   nodes_searched++;
 
   auto legals = generate_legal_moves(board);
