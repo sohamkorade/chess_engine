@@ -12,23 +12,29 @@
 #include "game.hpp"
 
 Game g;
+
+thread ai_thread;
+atomic<bool> thinking = false;
+int ai_think_time = 5000;
+
+enum MoveType { Human, Computer, PreMove };
+
 bool board_flipped = false;
 int sel_sq = -1, prom_sq = -1;
 vector<Move> moves;
 map<int, Move> promotions;
 set<int> valid_sqs, valid_capture_sqs;
 
-bool thinking = false;
-bool stop_thinking = false;
+bool disable_engine = false;
 Move premove;
 
 GtkWidget *squares[64], *chess_board_grid, *statusbar, *move_label;
 GtkEntryBuffer *fen_entry_buffer;
 GtkWidget *white_human, *white_randommover, *white_ai, *black_human,
-    *black_randommover, *black_ai, *stop_think, *eval_bar;
+    *black_randommover, *black_ai, *stop_think, *eval_bar, *ai_time_scale;
 
 void computer_move();
-void make_move(Move m);
+void make_move(Move m, MoveType type);
 
 int flipped(int sq) { return board_flipped ? 63 - sq : sq; }
 
@@ -45,20 +51,18 @@ void update_piece(int sq, Piece piece) {
 }
 
 void generate_move_hints() {
-  Player actual_turn = g.board.turn;
-  if (thinking) g.board.change_turn();
+  Board temp = g.board;
+  if (thinking) temp.change_turn();
   // TODO: generate all possible moves even non-existent pawn captures
-  moves =
-      thinking ? generate_legal_moves(g.board) : generate_pseudo_moves(g.board);
+  moves = thinking ? generate_legal_moves(temp) : generate_pseudo_moves(temp);
   valid_sqs.clear();
   valid_capture_sqs.clear();
   for (auto &move : moves)
     if (move.from == sel_sq)
-      (g.board.empty(move.to) ? valid_sqs : valid_capture_sqs).insert(move.to);
+      (temp.empty(move.to) ? valid_sqs : valid_capture_sqs).insert(move.to);
 
   // deselect square if no valid move possible
   if (valid_sqs.size() == 0 && valid_capture_sqs.size() == 0) sel_sq = -1;
-  g.board.turn = actual_turn;
 }
 
 void update_board() {
@@ -83,11 +87,13 @@ void update_board() {
     for (auto &c : {"selected_sq", "valid_sq", "valid_capture_sq", "check_sq",
                     "premove_sq"})
       gtk_widget_remove_css_class(squares[j], c);
-    if ((premove.from == i) ^ (premove.to == i))
+    if ((premove.from == i) ^ (premove.to == i)) {
       gtk_widget_add_css_class(squares[j], "premove_sq");
-    else if (i == sel_sq || i == last_from || i == last_to)
+      continue;
+    }
+    if (i == sel_sq || i == last_from || i == last_to)
       gtk_widget_add_css_class(squares[j], "selected_sq");
-    else if (valid_sqs.count(i))
+    if (valid_sqs.count(i))
       gtk_widget_add_css_class(squares[j], "valid_sq");
     else if (valid_capture_sqs.count(i))
       gtk_widget_add_css_class(squares[j], "valid_capture_sq");
@@ -110,6 +116,24 @@ string get_result_str(Status result) {
   return "*";
 }
 
+string get_draw_type_str(DrawType draw_type) {
+  if (draw_type == InsufficientMaterial)
+    return "Draw by Insufficient material";
+  else if (draw_type == FiftyMoveRule)
+    return "Draw by Fifty move rule";
+  else if (draw_type == ThreefoldRepetition)
+    return "Draw by Threefold repetition";
+  else if (draw_type == FivefoldRepetition)
+    return "Draw by Fivefold repetition";
+  else if (draw_type == SeventyFiveMoveRule)
+    return "Draw by Seventy five move rule";
+  else if (draw_type == Stalemate)
+    return "Draw by Stalemate";
+  else if (draw_type == DeadPosition)
+    return "Draw by Dead position";
+  return "";
+}
+
 void update_gui() {
   update_board();
 
@@ -120,14 +144,22 @@ void update_gui() {
       ("Move: " + to_string(g.ply / 2 + 1) + " " + get_result_str(g.result))
           .c_str());
 
-  // for (auto &x : g.white_alive) cout << x;
-  // cout << " vs ";
-  // for (auto &x : g.black_alive) cout << x;
-  // cout << g.result << endl;
+  if (g.result != Undecided) {
+    string result = get_result_str(g.result);
+    if (g.draw_type) result += " " + get_draw_type_str(g.draw_type);
+    show_statusbar_msg(result);
+  }
+}
+
+void print_material_count() {
+  for (int i = 0; i < 13; i++) {
+    if (i == 6) continue;
+    cout << piece2char(Piece(i - 6)) << ":" << g.material_count[i] << " ";
+  }
+  cout << endl;
 }
 
 // button events
-
 void first_click() { g.seek(0), update_gui(); }
 void prev_click() { g.prev(), update_gui(); }
 void next_click() { g.next(), update_gui(); }
@@ -149,11 +181,16 @@ void newgame_click() {
 }
 void stop_think_click() {
   // TODO: make elegant
-  stop_thinking = !stop_thinking;
-  gtk_button_set_label(GTK_BUTTON(stop_think), stop_thinking
-                                                   ? "Enable computer moves"
-                                                   : "Disable computer moves");
-  if (!stop_thinking) computer_move();
+  disable_engine = !disable_engine;
+  gtk_button_set_label(GTK_BUTTON(stop_think),
+                       disable_engine ? "Enable AI" : "Disable AI");
+  // set progress bar to full
+  if (disable_engine) {
+    gtk_progress_bar_set_fraction(GTK_PROGRESS_BAR(eval_bar), 1);
+    thinking = false;
+    if (ai_thread.joinable()) ai_thread.join();
+  } else
+    computer_move();
 }
 void fen_apply_click() {
   if (g.load_fen(gtk_entry_buffer_get_text(GTK_ENTRY_BUFFER(fen_entry_buffer))))
@@ -163,47 +200,73 @@ void fen_apply_click() {
   update_gui();
 }
 
+void ai_level_change() {
+  ai_think_time = gtk_range_get_value(GTK_RANGE(ai_time_scale));
+}
+
 void computer_move() {
-  thinking = true;
-  show_statusbar_msg("Thinking...");
-  gtk_progress_bar_pulse(GTK_PROGRESS_BAR(eval_bar));
-  if (!stop_thinking) {
-    if (gtk_check_button_get_active(GTK_CHECK_BUTTON(
-            g.board.turn == White ? white_randommover : black_randommover))) {
-      make_move(g.random_move());
-    } else if (gtk_check_button_get_active(GTK_CHECK_BUTTON(
-                   g.board.turn == White ? white_ai : black_ai))) {
-      auto [move, score] = g.ai_move();
-      // gtk_progress_bar_set_inverted(GTK_PROGRESS_BAR(eval_bar), score < 0);
-      // gtk_progress_bar_set_fraction(GTK_PROGRESS_BAR(eval_bar),
-      //                               abs(score) / 1e4);
-      make_move(move);
-    }
+  if (disable_engine) {
+    show_statusbar_msg("Please enable AI.");
+    return;
   }
-  thinking = false;
+  show_statusbar_msg("Thinking...");
+  if (gtk_check_button_get_active(GTK_CHECK_BUTTON(
+          g.board.turn == White ? white_randommover : black_randommover))) {
+    make_move(g.random_move(), Computer);
+  } else if (gtk_check_button_get_active(GTK_CHECK_BUTTON(
+                 g.board.turn == White ? white_ai : black_ai))) {
+    if (thinking) return;
+    // start a timer to complete the progress bar after `ai_think_time` ms
+    gtk_progress_bar_set_fraction(GTK_PROGRESS_BAR(eval_bar), 0);
+    g_timeout_add(
+        200,
+        [](gpointer data) {
+          double frac =
+              gtk_progress_bar_get_fraction(GTK_PROGRESS_BAR(eval_bar));
+          frac += 1.0 / ai_think_time * 200;
+          gtk_progress_bar_set_fraction(GTK_PROGRESS_BAR(eval_bar), frac);
+          return frac >= 1 ? G_SOURCE_REMOVE : G_SOURCE_CONTINUE;
+        },
+        NULL);
+    thinking = true;
+    if (ai_thread.joinable()) ai_thread.join();
+    ai_thread = thread([&]() {
+      auto [move, score] = g.ai_move(ai_think_time);
+      thinking = false;
+      make_move(move, Computer);
+    });
+  }
 }
 
-void make_legal_move(Move m) {
+bool is_legal(Move m) {
   for (auto &move : generate_legal_moves(g.board))
-    if (move.equals(m)) {
-      make_move(m);
-      break;
-    }
+    if (move.equals(m)) return true;
+  return false;
 }
 
-void make_move(Move m) {
-  // while (g_main_context_pending(0)) g_main_context_iteration(0, 0);
+void make_move(Move m, MoveType type) {
+  if (g.result != Undecided) return;
+  if (thinking) return;
+  if (!is_legal(m)) return;
+
+  if (!g.make_move(m)) return;
+
   valid_sqs.clear();
   valid_capture_sqs.clear();
-  if (!g.make_move(m)) return;
   update_gui();
-  // Search ai;
-  // ai.board = g.board;
-  // ai.eval<true>();
-  if (g.result != Undecided) return;
+
+  // creates deadlock for some reason :(
+  // if (type == Computer && premove.from != premove.to) {
+  //   auto temp = premove;
+  //   premove = Move();
+  //   make_move(temp, PreMove);
+  //   return;
+  // }
+  premove = Move();  // reset premove
+
   computer_move();
-  make_legal_move(premove);
-  premove.from = premove.to;  // reset premove
+
+  update_gui();
 }
 
 void move_intent(int sq) {
@@ -212,11 +275,11 @@ void move_intent(int sq) {
     if (move.equals(sel_sq, sq)) valids.push_back(move);
   valid_sqs.clear();
   valid_capture_sqs.clear();
-  if (valids.size() == 1)
+  if (valids.size() == 1)  // move is not a promotion
     if (thinking)
       premove = valids.front();
     else
-      make_legal_move(valids.front());
+      make_move(valids.front(), Human);
   else if (valids.size() > 1) {  // move is a promotion
     prom_sq = valids.front().to;
     Direction d = prom_sq / 8 == 0 ? S : N;
@@ -241,7 +304,8 @@ void square_click(GtkWidget *widget, gpointer data) {
   sq = flipped(sq);
   if (~prom_sq) {
     for (auto &x : promotions) {
-      if (x.first == sq) make_move(x.second);  // clicked on promotion piece
+      if (x.first == sq)
+        make_move(x.second, Human);  // clicked on promotion piece
       gtk_widget_remove_css_class(squares[flipped(x.first)], "promotion");
     }
     gtk_widget_remove_css_class(chess_board_grid, "promotion");
@@ -311,8 +375,19 @@ GtkWidget *chess_board() {
   gtk_grid_set_row_homogeneous(GTK_GRID(chess_board_grid), true);
   gtk_widget_set_size_request(chess_board_grid, 600, 600);
 
+  // auto-resize, but keep aspect ratio
+  GtkWidget *frame = gtk_aspect_frame_new(0.0, 0.0, 1.0, false);
+  gtk_aspect_frame_set_child(GTK_ASPECT_FRAME(frame), chess_board_grid);
+  gtk_widget_set_hexpand(frame, true);
+  gtk_widget_set_vexpand(frame, true);
+  gtk_widget_set_margin_start(chess_board_grid, 50);
+  gtk_widget_set_margin_end(chess_board_grid, 50);
+  gtk_widget_set_margin_top(chess_board_grid, 50);
+  gtk_widget_set_margin_bottom(chess_board_grid, 50);
+
   gtk_widget_set_name(chess_board_grid, "board");
-  return chess_board_grid;
+
+  return frame;
 }
 
 pair<GtkWidget *, GtkWidget *> create_player_chooser() {
@@ -359,8 +434,12 @@ GtkWidget *navigation_buttons() {
   GtkWidget *flip = gtk_button_new_with_label("Flip board");
   GtkWidget *lichess = gtk_button_new_with_label("Open in lichess");
   GtkWidget *newgame = gtk_button_new_with_label("New game");
-  stop_think = gtk_button_new_with_label("Disable computer moves");
+  stop_think = gtk_button_new_with_label("Disable AI");
   eval_bar = gtk_progress_bar_new();
+  ai_time_scale =
+      gtk_scale_new_with_range(GTK_ORIENTATION_HORIZONTAL, 1000, 10000, 100);
+  gtk_range_set_value(GTK_RANGE(ai_time_scale), ai_think_time);
+  GtkWidget *ai_time_scale_label = gtk_label_new("AI thinking time (ms)");
 
   gtk_grid_attach(GTK_GRID(grid), move_label, 1, 1, 1, 1);
   gtk_grid_attach(GTK_GRID(grid), first, 1, 2, 1, 1);
@@ -377,6 +456,8 @@ GtkWidget *navigation_buttons() {
   gtk_grid_attach(GTK_GRID(grid), white_frame, 1, 8, 4, 1);
 
   gtk_grid_attach(GTK_GRID(grid), eval_bar, 1, 9, 4, 1);
+  gtk_grid_attach(GTK_GRID(grid), ai_time_scale_label, 1, 10, 4, 1);
+  gtk_grid_attach(GTK_GRID(grid), ai_time_scale, 1, 11, 4, 1);
 
   g_signal_connect(first, "clicked", G_CALLBACK(first_click), NULL);
   g_signal_connect(prev, "clicked", G_CALLBACK(prev_click), NULL);
@@ -386,6 +467,8 @@ GtkWidget *navigation_buttons() {
   g_signal_connect(lichess, "clicked", G_CALLBACK(lichess_click), NULL);
   g_signal_connect(newgame, "clicked", G_CALLBACK(newgame_click), NULL);
   g_signal_connect(stop_think, "clicked", G_CALLBACK(stop_think_click), NULL);
+  g_signal_connect(ai_time_scale, "value-changed", G_CALLBACK(ai_level_change),
+                   NULL);
 
   gtk_widget_set_margin_start(grid, 5);
 

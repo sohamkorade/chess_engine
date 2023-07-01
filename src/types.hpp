@@ -41,6 +41,16 @@ enum Direction : char {
 
 enum Player { White = 1, Black = -1 };
 enum Status { Undecided, WhiteWins, BlackWins, Draw };
+enum DrawType {
+  None,
+  InsufficientMaterial,
+  FiftyMoveRule,
+  ThreefoldRepetition,
+  FivefoldRepetition,
+  SeventyFiveMoveRule,
+  Stalemate,
+  DeadPosition
+};
 
 enum Piece {
   Empty = 0,
