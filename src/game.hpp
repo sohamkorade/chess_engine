@@ -19,7 +19,7 @@ class Game {
   void prev();
   void next();
   void print_movelist();
-  void print_pgn();
+  string to_pgn();
   void seek(int n);
   Move random_move();
   pair<Move, int> ai_move(int time);
@@ -28,3 +28,6 @@ class Game {
   bool load_fen(string fen);
   void update_material_count();
 };
+
+string get_result_str(Status result);
+string get_draw_type_str(DrawType draw_type);

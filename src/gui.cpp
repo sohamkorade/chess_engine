@@ -106,34 +106,6 @@ void update_board() {
   }
 }
 
-string get_result_str(Status result) {
-  if (result == Draw)
-    return "½-½";
-  else if (result == WhiteWins)
-    return "1-0";
-  else if (result == BlackWins)
-    return "0-1";
-  return "*";
-}
-
-string get_draw_type_str(DrawType draw_type) {
-  if (draw_type == InsufficientMaterial)
-    return "Draw by Insufficient material";
-  else if (draw_type == FiftyMoveRule)
-    return "Draw by Fifty move rule";
-  else if (draw_type == ThreefoldRepetition)
-    return "Draw by Threefold repetition";
-  else if (draw_type == FivefoldRepetition)
-    return "Draw by Fivefold repetition";
-  else if (draw_type == SeventyFiveMoveRule)
-    return "Draw by Seventy five move rule";
-  else if (draw_type == Stalemate)
-    return "Draw by Stalemate";
-  else if (draw_type == DeadPosition)
-    return "Draw by Dead position";
-  return "";
-}
-
 void update_gui() {
   update_board();
 
@@ -179,6 +151,10 @@ void newgame_click() {
   g.new_game();
   update_gui();
 }
+void copypgn_click() {
+  gdk_clipboard_set_text(gdk_display_get_clipboard(gdk_display_get_default()),
+                         g.to_pgn().c_str());
+}
 void stop_think_click() {
   // TODO: make elegant
   disable_engine = !disable_engine;
@@ -202,6 +178,8 @@ void fen_apply_click() {
 
 void ai_level_change() {
   ai_think_time = gtk_range_get_value(GTK_RANGE(ai_time_scale));
+  gtk_widget_set_tooltip_text(ai_time_scale,
+                              (to_string(ai_think_time) + " ms").c_str());
 }
 
 void computer_move() {
@@ -319,42 +297,7 @@ void square_click(GtkWidget *widget, gpointer data) {
   update_gui();
 }
 
-// static GdkContentProvider *on_drag_prepare(GtkDragSource *source, double x,
-//                                            double y, GtkWidget *self) {
-//   // for (int i = 0; i < 64; i++) {
-//   //   if (squares[i] == self) {
-//   //     return gdk_content_provider_new_union(
-//   //         (GdkContentProvider *[1]){
-//   //             gdk_content_provider_new_typed(G_TYPE_INT, i),
-//   //         },
-//   //         1);
-//   //   }
-//   // }
-//   return 0;
-// }
-// static void on_drag_begin(GtkDragSource *source, GdkDrag *drag,
-//                           GtkWidget *self) {
-//   // Set the widget as the drag icon
-//   GdkPaintable *paintable = gtk_widget_paintable_new(self);
-//   gtk_drag_source_set_icon(source, paintable, 0, 0);
-//   g_object_unref(paintable);
-// }
-// static gboolean on_drop(GtkDropTarget *target, const GValue *value, double x,
-//                         double y, gpointer data) {
-//   int sq = GPOINTER_TO_INT(data);
-//   if (sq >= 0 && sq < 64) {
-//     sel_sq = sq;
-//     cout << "drop " << sq << endl;
-//     // move_intent(sq);
-//   } else
-//     return FALSE;
-//   return TRUE;
-// }
 GtkWidget *chess_board() {
-  // GtkDragSource *drag_source = gtk_drag_source_new();
-  // GtkDropTarget *target = gtk_drop_target_new(G_TYPE_INVALID,
-  // GDK_ACTION_COPY); gtk_drop_target_set_gtypes(target,
-  // (GType[1]){G_TYPE_INT}, 1);
   chess_board_grid = gtk_grid_new();
   for (int i = 0; i < 64; i++) {
     squares[i] = gtk_button_new();
@@ -362,13 +305,6 @@ GtkWidget *chess_board() {
                      GINT_TO_POINTER(i));
     gtk_button_set_has_frame(GTK_BUTTON(squares[i]), false);
     gtk_widget_add_css_class(squares[i], "piece");
-    // g_signal_connect(drag_source, "prepare", G_CALLBACK(on_drag_prepare),
-    //                  squares[i]);
-    // g_signal_connect(drag_source, "drag-begin", G_CALLBACK(on_drag_begin),
-    //                  squares[i]);
-    // gtk_widget_add_controller(squares[i], GTK_EVENT_CONTROLLER(drag_source));
-    // g_signal_connect(target, "drop", G_CALLBACK(on_drop), squares[i]);
-    // gtk_widget_add_controller(squares[i], GTK_EVENT_CONTROLLER(target));
     gtk_grid_attach(GTK_GRID(chess_board_grid), squares[i], i % 8, i / 8, 1, 1);
   }
   gtk_grid_set_column_homogeneous(GTK_GRID(chess_board_grid), true);
@@ -433,11 +369,13 @@ GtkWidget *navigation_buttons() {
   GtkWidget *last = gtk_button_new_from_icon_name("go-last");
   GtkWidget *flip = gtk_button_new_with_label("Flip board");
   GtkWidget *lichess = gtk_button_new_with_label("Open in lichess");
+  GtkWidget *copypgn = gtk_button_new_with_label("Copy PGN");
   GtkWidget *newgame = gtk_button_new_with_label("New game");
   stop_think = gtk_button_new_with_label("Disable AI");
   eval_bar = gtk_progress_bar_new();
   ai_time_scale =
       gtk_scale_new_with_range(GTK_ORIENTATION_HORIZONTAL, 1000, 10000, 100);
+  ai_level_change();
   gtk_range_set_value(GTK_RANGE(ai_time_scale), ai_think_time);
   GtkWidget *ai_time_scale_label = gtk_label_new("AI thinking time (ms)");
 
@@ -449,15 +387,16 @@ GtkWidget *navigation_buttons() {
   gtk_grid_attach(GTK_GRID(grid), flip, 1, 3, 4, 1);
   gtk_grid_attach(GTK_GRID(grid), lichess, 1, 4, 4, 1);
   gtk_grid_attach(GTK_GRID(grid), newgame, 1, 5, 4, 1);
-  gtk_grid_attach(GTK_GRID(grid), stop_think, 1, 6, 4, 1);
+  gtk_grid_attach(GTK_GRID(grid), copypgn, 1, 6, 4, 1);
+  gtk_grid_attach(GTK_GRID(grid), stop_think, 1, 7, 4, 1);
 
   auto [white_frame, black_frame] = create_player_chooser();
-  gtk_grid_attach(GTK_GRID(grid), black_frame, 1, 7, 4, 1);
-  gtk_grid_attach(GTK_GRID(grid), white_frame, 1, 8, 4, 1);
+  gtk_grid_attach(GTK_GRID(grid), black_frame, 1, 8, 4, 1);
+  gtk_grid_attach(GTK_GRID(grid), white_frame, 1, 9, 4, 1);
 
-  gtk_grid_attach(GTK_GRID(grid), eval_bar, 1, 9, 4, 1);
-  gtk_grid_attach(GTK_GRID(grid), ai_time_scale_label, 1, 10, 4, 1);
-  gtk_grid_attach(GTK_GRID(grid), ai_time_scale, 1, 11, 4, 1);
+  gtk_grid_attach(GTK_GRID(grid), eval_bar, 1, 10, 4, 1);
+  gtk_grid_attach(GTK_GRID(grid), ai_time_scale_label, 1, 11, 4, 1);
+  gtk_grid_attach(GTK_GRID(grid), ai_time_scale, 1, 12, 4, 1);
 
   g_signal_connect(first, "clicked", G_CALLBACK(first_click), NULL);
   g_signal_connect(prev, "clicked", G_CALLBACK(prev_click), NULL);
@@ -466,6 +405,7 @@ GtkWidget *navigation_buttons() {
   g_signal_connect(flip, "clicked", G_CALLBACK(flip_click), NULL);
   g_signal_connect(lichess, "clicked", G_CALLBACK(lichess_click), NULL);
   g_signal_connect(newgame, "clicked", G_CALLBACK(newgame_click), NULL);
+  g_signal_connect(copypgn, "clicked", G_CALLBACK(copypgn_click), NULL);
   g_signal_connect(stop_think, "clicked", G_CALLBACK(stop_think_click), NULL);
   g_signal_connect(ai_time_scale, "value-changed", G_CALLBACK(ai_level_change),
                    NULL);
@@ -509,6 +449,7 @@ static void activate(GtkApplication *app, gpointer user_data) {
   gtk_style_context_add_provider_for_display(gtk_widget_get_display(window),
                                              GTK_STYLE_PROVIDER(cssProvider),
                                              GTK_STYLE_PROVIDER_PRIORITY_USER);
+
   gtk_window_present(GTK_WINDOW(window));
   update_gui();
 }

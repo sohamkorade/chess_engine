@@ -52,14 +52,27 @@ void Game::print_movelist() {
   }
 }
 
-void Game::print_pgn() {
-  cerr << "PGN" << endl;
+string Game::to_pgn() {
+  time_t now = chrono::system_clock::to_time_t(chrono::system_clock::now());
+  string date = ctime(&now);
+
+  string pgn;
+  pgn.reserve(1000);
+  pgn += "[Event \"?\"]\n";
+  pgn += "[Site \"?\"]\n";
+  pgn += "[Date \"" + date + "\"]\n";
+  pgn += "[Round \"?\"]\n";
+  pgn += "[White \"?\"]\n";
+  pgn += "[Black \"?\"]\n";
+  pgn += "[Result \"" + get_result_str(result) + "\"]\n";
+
   Board temp;
   for (int i = 0; i < end; i++) {
-    if (i % 2 == 0) cerr << (i / 2 + 1) << ".";
-    cerr << to_san(temp, movelist[i]) << " ";
+    if (i % 2 == 0) pgn += to_string(i / 2 + 1) + ". ";
+    pgn += to_san(temp, movelist[i]) + " ";
     temp.make_move(movelist[i]);
   }
+  return pgn;
 }
 void Game::seek(int n) {
   while (ply < n && ply < end) next();
@@ -214,4 +227,32 @@ void Game::update_material_count() {
   fill_n(material_count, 13, 0);
   for (auto& x : board.board)
     if (x) material_count[x + 6]++;
+}
+
+string get_result_str(Status result) {
+  if (result == Draw)
+    return "½-½";
+  else if (result == WhiteWins)
+    return "1-0";
+  else if (result == BlackWins)
+    return "0-1";
+  return "*";
+}
+
+string get_draw_type_str(DrawType draw_type) {
+  if (draw_type == InsufficientMaterial)
+    return "Draw by Insufficient material";
+  else if (draw_type == FiftyMoveRule)
+    return "Draw by Fifty move rule";
+  else if (draw_type == ThreefoldRepetition)
+    return "Draw by Threefold repetition";
+  else if (draw_type == FivefoldRepetition)
+    return "Draw by Fivefold repetition";
+  else if (draw_type == SeventyFiveMoveRule)
+    return "Draw by Seventy five move rule";
+  else if (draw_type == Stalemate)
+    return "Draw by Stalemate";
+  else if (draw_type == DeadPosition)
+    return "Draw by Dead position";
+  return "";
 }
