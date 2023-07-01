@@ -28,7 +28,7 @@ bool Game::make_move(Move m) {
     repetitions.clear();
 
   ply++, end++;
-  repetitions.insert(board.zobrist_hash());
+  repetitions.push_back(board.zobrist_hash());
   result = get_result();
   return true;
 }
@@ -112,7 +112,10 @@ Status Game::get_result() {
   //   return Draw;
 
   // repetition
-  if (repetitions.count(board.zobrist_hash()) == 3) return Draw;
+  int count = 0;
+  for (auto& rep : repetitions)
+    if (rep == board.zobrist_hash()) count++;
+  if (count == 3) return Draw;
 
   return Undecided;
 }

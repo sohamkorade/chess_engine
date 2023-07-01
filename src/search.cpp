@@ -278,6 +278,7 @@ inline int Search::eval() {
     cout << "endgame score: " << endgame_score << endl;
 
     cout << "is in check: " << is_in_check(board, board.turn) << endl;
+    cout << "is repetition: " << is_repetition() << endl;
   }
 
   return material_score + pst_score + mobility_score;
@@ -289,9 +290,11 @@ int Search::negamax(int depth) {
   auto legals = generate_legal_moves(board);
   for (auto& move : legals) {
     ply++;
+    repetitions.push_back(board.zobrist_hash());
     board.make_move(move);
     int score = -negamax(depth - 1);
     board.unmake_move(move);
+    repetitions.pop_back();
     ply--;
     if (score > bestscore) {
       bestscore = score;
@@ -306,8 +309,7 @@ int Search::negamax(int depth) {
 int Search::alphabeta(int depth, int alpha, int beta) {
   nodes_searched++;
 
-  // TODO: check repetition
-  // return 0;
+  if (ply && is_repetition()) return 0;
 
   // TODO: probe TT
   // const int TT_score = TT_probe(TT, board.zobrist_hash(), depth, alpha,
@@ -328,11 +330,13 @@ int Search::alphabeta(int depth, int alpha, int beta) {
 
   for (auto& move : legals) {
     ply++;
+    repetitions.push_back(board.zobrist_hash());
     board.make_move(move);
     // TODO: late move reduction
     // full window search if not LMR
     score = -alphabeta(depth - 1, -beta, -alpha);
     board.unmake_move(move);
+    repetitions.pop_back();
     ply--;
     if (score > alpha) {
       // TODO: PV update
@@ -374,9 +378,11 @@ int Search::quiesce(int depth, int alpha, int beta) {
   for (auto& move : legals) {
     if (board[move.to] == Empty) continue;  // ignore non-capturing moves
     ply++;
+    repetitions.push_back(board.zobrist_hash());
     board.make_move(move);
     int score = -quiesce(depth + 1, -beta, -alpha);
     board.unmake_move(move);
+    repetitions.pop_back();
     ply--;
     if (score > alpha) {
       alpha = score;
@@ -387,4 +393,13 @@ int Search::quiesce(int depth, int alpha, int beta) {
   }
 
   return alpha;  // fail-low alpha-cutoff
+}
+
+bool Search::is_repetition() {
+  const auto hash = board.zobrist_hash();
+  int n = repetitions.size();
+  for (int i = 0; i < n - 1; i++) {
+    if (repetitions[i] == hash) return true;
+  }
+  return false;
 }

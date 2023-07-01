@@ -5,11 +5,11 @@
 thread ai_thread;
 
 void parse_and_make_moves(istringstream& iss, Board& board,
-                          multiset<uint64_t>& repetitions) {
+                          vector<uint64_t>& repetitions) {
   string token;
   while (iss >> token) {
     if (make_move_if_legal(board, token))
-      repetitions.insert(board.zobrist_hash());
+      repetitions.push_back(board.zobrist_hash());
     else
       break;
   }
@@ -137,7 +137,6 @@ void uci_loop() {
         else
           break;
       }
-      board.load_startpos();
     } else if (token == "eval") {
       ai.eval<true>();
     } else if (token == "isincheck") {

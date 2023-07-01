@@ -267,3 +267,6 @@
 
 ### 5:50 am
 - `debug_mode` actually works now
+
+### 6:30 am
+- added 3-fold repetition check, hopefully it works! Earlier I had tried using multiset to store hashes, but I was not sure how to implement it 'inside' search function. Now I'm using a vector to store hashes, and checking for repetitions after every move.

@@ -22,7 +22,7 @@ class Search {
   int max_depth = 100;
   SearchType search_type = Time_per_game;
   atomic<bool> searching{false};
-  multiset<uint64_t> repetitions;  // for checking repetition
+  vector<uint64_t> repetitions;  // for checking draw by repetition
   TT_t TT;
   int nodes_searched = 0;
   int ply = 0;
@@ -35,6 +35,7 @@ class Search {
   void set_clock(int _wtime, int _btime, int _winc, int _binc);
   template <bool debug>
   int eval();
+  bool is_repetition();
 
  protected:
   int negamax(int depth);
