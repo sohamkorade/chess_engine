@@ -292,3 +292,8 @@
 - FEN: 5rk1/2RR1p1p/2p3p1/8/8/p3PK1P/2r3P1/8 w - - 0 28
 - Rxf7?? was played, a big blunder! Gotta figure out why.
 - fixed gui bug when the board is flipped
+
+### night
+- added move manager to avoid deadlock due to recursion, i still dont know whether this is good or bad
+- made many GUI improvements, proud of myself :D
+- Maybe I should focus more on the engine now. Also, the interprocess communication (whatever it is called, for I hacked up a solution) is working just for my engine executable. For Stockfish, it just spits out a move as fast as it can (any legal move). I have to figure out why this is happening.
