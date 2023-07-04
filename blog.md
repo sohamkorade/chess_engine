@@ -224,3 +224,76 @@
 	- castling move generation
 	- I didn't check the case where the squares adjacent to the king are attacked by a pawn on the 7th rank
 	- fixed it by using the new `is_in_threat` function
+
+## 12 Jan 2023
+
+### 3 am
+- moved `to_san` function to `Move` class
+- fixed move sorting bug: was considering non-captures first
+- added transposition table
+	- hash table that stores scores of recently searched positions
+- replaced `endl` with "\n" (idk if it improves performance)
+- BUGFIX:
+	- mate score was displayed wrong
+- TODO:
+	- thoroughly test TT
+	- incremental zobrist hashing
+- TT is working, I'm happy :)
+
+## 10 Feb 2023
+- another bugfix:
+	- was generating only one en passant capture
+	- similar to old one side castling bug
+	- `else` was the culprit
+	- fixed
+- perft test now takes maxnodes as first arg
+- ran all perft tests, all passed at full depth!
+
+## 15 May 2023
+
+### 2:45 am
+- changed "\n" to endl, maybe solves the issue of not getting the bestmove detected by GUIs
+- program still reports incorrect mate scores
+- __TODO__: fix mate score
+
+## 30 Jun 2023
+
+### 9:45 pm
+- remove unnecessary condition in search function (depth > max_depth) which cannot occur
+- increased position eval score weight in endgame
+- corrected 'losing king' to mean the opponent's king in endgame pos eval
+- `ply` count now replaces depth to calculate mate score
+	- Finally now the engine outputs correct mate scores! The bug was due to `depth` being used instead of `ply`. `depth` doesn't increase linearly with `ply`, so it was giving wrong mate scores (because quiescence search, check extensions, etc. make it unpredictable).
+
+### 5:50 am
+- `debug_mode` actually works now
+
+### 6:30 am
+- added 3-fold repetition check, hopefully it works! Earlier I had tried using multiset to store hashes, but I was not sure how to implement it 'inside' search function. Now I'm using a vector to store hashes, and checking for repetitions after every move.
+
+### 7 am
+- added tapered eval, now the engine can play endgames better!
+- I am astonished by the level at which the engine is playing now! Earlier it was making blunders in endgames, but now it is playing so well! I'm so happy :D
+
+### morning
+- NEW FEATURES:
+	- MADE GUI USABLE AGAIN!
+	- choose random out of best-scoring moves
+	- can connect to external engines (decoupled my own engine from the GUI, yet to test thoroughly)
+- fixed infinite recursion bug in a function (although that function was never called)
+- fixed usage of `to_san` function, it should be called only before making the move on the board
+- draw by repetition yet to be tested in GUI
+- main bug was that the `zobrist_init` function was not called at the start of the game, so the hash was same for all positions. Hours of debugging and it was just a single line of code! LOL!!
+- removed unnecessary include in `main.cpp` and also in Makefile
+- separated out `get_move_if_legal` from `make_move_if_legal`, it was required elsewhere
+
+### evening
+- I let my brother play against the engine, and he won! But found a bug in the endgame.
+- FEN: 5rk1/2RR1p1p/2p3p1/8/8/p3PK1P/2r3P1/8 w - - 0 28
+- Rxf7?? was played, a big blunder! Gotta figure out why.
+- fixed gui bug when the board is flipped
+
+### night
+- added move manager to avoid deadlock due to recursion, i still dont know whether this is good or bad
+- made many GUI improvements, proud of myself :D
+- Maybe I should focus more on the engine now. Also, the interprocess communication (whatever it is called, for I hacked up a solution) is working just for my engine executable. For Stockfish, it just spits out a move as fast as it can (any legal move). I have to figure out why this is happening.

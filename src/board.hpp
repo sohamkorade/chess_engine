@@ -22,6 +22,7 @@ class Move {
         enpassant(_enpassant),
         castling(_castling) {}
   void print();
+  string to_uci();
   inline bool equals(int _from, int _to) { return from == _from && to == _to; }
   inline bool equals(Move& move) {
     return equals(move.from, move.to) && promotion == move.promotion;
@@ -49,8 +50,6 @@ class Board {
   void unmake_move(Move& move);
   bool load_fen(string fen);
   string to_fen();
-  string to_uci(Move move);
-  string to_san(Move move);
   void load_startpos();
 
   uint64_t zobrist_hash();

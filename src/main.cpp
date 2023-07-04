@@ -1,16 +1,14 @@
 #include "board.hpp"
-#include "game.hpp"
 #include "search.hpp"
 
-bool debug_mode = false;
 thread ai_thread;
 
 void parse_and_make_moves(istringstream& iss, Board& board,
-                          multiset<uint64_t>& repetitions) {
+                          vector<uint64_t>& repetitions) {
   string token;
   while (iss >> token) {
     if (make_move_if_legal(board, token))
-      repetitions.insert(board.zobrist_hash());
+      repetitions.push_back(board.zobrist_hash());
     else
       break;
   }
@@ -103,7 +101,8 @@ void uci_loop() {
     } else if (token == "ponderhit") {
     } else if (token == "debug") {
       iss >> token;
-      debug_mode = token == "on";
+      ai.debug_mode = token == "on";
+      cout << "debug mode: " << (ai.debug_mode ? "on" : "off") << endl;
     } else if (token == "isready") {
       cout << "readyok" << endl;
     } else if (token == "setoption") {
@@ -116,10 +115,10 @@ void uci_loop() {
       // additional commands
     } else if (token == "pseudo") {
       for (auto& move : generate_pseudo_moves(board))
-        cout << to_san(board, move) << "\n";
+        cout << to_san(board, move) << endl;
     } else if (token == "legal") {
       for (auto& move : generate_legal_moves(board))
-        cout << to_san(board, move) << "\n";
+        cout << to_san(board, move) << endl;
     } else if (token == "lichess") {
       string fen = board.to_fen();
       replace(fen.begin(), fen.end(), ' ', '_');
@@ -137,9 +136,8 @@ void uci_loop() {
         else
           break;
       }
-      board.load_startpos();
     } else if (token == "eval") {
-      ai.print_eval();
+      ai.eval<true>();
     } else if (token == "isincheck") {
       cout << is_in_check(board, board.turn) << endl;
     } else if (token == "turn") {
@@ -153,7 +151,6 @@ void uci_loop() {
 }
 
 int main() {
-  srand(time(0));
   zobrist_init();
   uci_loop();
 }

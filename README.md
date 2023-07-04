@@ -5,6 +5,12 @@ A UCI chess engine written in C++. GUI is developed using GTK4.
 
 [@SohamChessBot](https://lichess.org/@/SohamChessBot) is on LiChess: [Watch](https://lichess.org/@/SohamChessBot/tv) or [Challenge](https://lichess.org/?user=SohamChessBot#friend)
 
+
+[![lichess-rapid](https://lichess-shield.vercel.app/api?username=SohamChessBot&format=bullet)](https://lichess.org/@/SohamChessBot/perf/bullet)
+[![lichess-rapid](https://lichess-shield.vercel.app/api?username=SohamChessBot&format=blitz)](https://lichess.org/@/SohamChessBot/perf/blitz)
+[![lichess-rapid](https://lichess-shield.vercel.app/api?username=SohamChessBot&format=rapid)](https://lichess.org/@/SohamChessBot/perf/rapid)
+[![lichess-classical](https://lichess-shield.vercel.app/api?username=SohamChessBot&format=classical)](https://lichess.org/@/SohamChessBot/perf/classical)
+
 # about
 ## features
 - Board representation

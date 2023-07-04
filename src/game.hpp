@@ -9,8 +9,9 @@ class Game {
   vector<Move> movelist;
   int ply = 0, end = 0;
   Status result = Undecided;
-  multiset<Piece> white_alive, black_alive;
-  multiset<uint64_t> repetitions;
+  DrawType draw_type = None;
+  int material_count[13] = {0};
+  vector<uint64_t> repetitions;
 
   Game();
   bool make_move(string m);
@@ -18,12 +19,15 @@ class Game {
   void prev();
   void next();
   void print_movelist();
-  void print_pgn();
+  string to_pgn();
   void seek(int n);
   Move random_move();
-  pair<Move, int> ai_move();
+  pair<Move, int> ai_move(int time);
   Status get_result();
   void new_game();
   bool load_fen(string fen);
-  void update_alive();
+  void update_material_count();
 };
+
+string get_result_str(Status result);
+string get_draw_type_str(DrawType draw_type);

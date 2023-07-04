@@ -132,7 +132,7 @@ void generate_promotions_and_ep(Board& board, vector<Move>& pseudo) {
     if (is_occupied<rel_SE, rel_P>(board.board, ep_sq))
       pseudo.emplace_back(ep_sq + rel_SE, ep_sq, Empty, Empty, true);
     // capture enpassant NE
-    else if (is_occupied<rel_SW, rel_P>(board.board, ep_sq))
+    if (is_occupied<rel_SW, rel_P>(board.board, ep_sq))
       pseudo.emplace_back(ep_sq + rel_SW, ep_sq, Empty, Empty, true);
   }
 }
@@ -215,7 +215,7 @@ int divide(Board& board, int depth) {
     //   break;
     // }
     sum += nodes;
-    moves.push_back(board.to_uci(move) + ": " + to_string(nodes));
+    moves.push_back(move.to_uci() + ": " + to_string(nodes));
   }
   auto t2 = chrono::high_resolution_clock::now();
   auto diff = chrono::duration_cast<chrono::nanoseconds>(t2 - t1).count();
@@ -324,9 +324,13 @@ vector<Move> generate_legal_moves(Board& board) {
   better_moves.reserve(movelist.size());
   others.reserve(movelist.size());
 
+  // split movelist into better_moves and others
+  // better_moves are captures, promotions, enpassant, castling
+  // finally combine both
+
   for (auto& move : movelist) {
     if (is_legal<turn>(board, move))
-      (board.empty(move.to) || move.promotion != Empty || move.enpassant ||
+      (board[move.to] != Empty || move.promotion != Empty || move.enpassant ||
                move.castling
            ? better_moves
            : others)
@@ -345,6 +349,13 @@ vector<Move> generate_legal_moves(Board& board) {
 }
 
 bool make_move_if_legal(Board& board, string move) {
+  auto m = get_move_if_legal(board, move);
+  if (m.equals(0, 0)) return false;
+  board.make_move(m);
+  return true;
+}
+
+Move get_move_if_legal(Board& board, string move) {
   int l = move.length();
   if (l == 4 || l == 5) {
     const int from = sq2idx(move[0], move[1]);
@@ -355,13 +366,13 @@ bool make_move_if_legal(Board& board, string move) {
           char2piece(board.turn == White ? toupper(move[4]) : tolower(move[4]));
     for (auto& m : generate_legal_moves(board))
       if (m.equals(from, to) && m.promotion == promotion) {
-        board.make_move(m);
-        return true;
+        return m;
       }
   }
-  return false;
+  return Move();
 }
 
+// NOTE: to be called before making the move
 string to_san(Board& board, Move move) {
   string san;
   // castling
@@ -371,7 +382,7 @@ string to_san(Board& board, Move move) {
     else if (move.equals(4, 2) || move.equals(60, 58))
       san = "O-O-O";
   } else {
-    char piece = toupper(piece2char(board.board[move.from]));
+    char piece = toupper(piece2char(board[move.from]));
     string origin = idx2sq(move.from);
     string target = idx2sq(move.to);
 
@@ -379,12 +390,13 @@ string to_san(Board& board, Move move) {
     if (piece != 'P') san = piece;
 
     // disambiguation
-    bool same_file = false, same_rank = false;
+    bool same_file = false, same_rank = false, same_piece = false;
     for (auto& move2 : generate_pseudo_moves(board)) {
       if (move2.from != move.from)                    // don't compare to self
         if (move2.to == move.to)                      // same destination
           if (board[move2.from] == board[move.from])  // same kind of piece
           {
+            same_piece = true;
             if (move2.from / 8 == move.from / 8)  // same rank
               same_file = true;
             if (move2.from % 8 == move.from % 8)  // same file
@@ -393,6 +405,8 @@ string to_san(Board& board, Move move) {
     }
     if (same_file && piece != 'P') san += origin[0];  // add file, if not pawn
     if (same_rank) san += origin[1];                  // add rank
+    if (!same_file && !same_rank && same_piece)       // add file, e.g. knights
+      san += origin[0];
 
     // capture
     if (!board.empty(move.to) || move.enpassant) {
