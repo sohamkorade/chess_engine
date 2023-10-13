@@ -11,6 +11,10 @@ int main() {
     string input;
     cin >> input;
 
+    if (input == "quit") {
+      break;
+    }
+
     // write to a file
     ofstream file;
     file.open("temp");
@@ -32,10 +36,6 @@ int main() {
       }
     }
     file2.close();
-
-    if (input == "quit") {
-      break;
-    }
   }
 
   //   // communicate with a process
