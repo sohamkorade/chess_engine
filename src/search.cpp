@@ -143,6 +143,7 @@ vector<pair<int, Move>> Search::iterative_search() {
   // convert moves to score-move pairs
   auto legals = generate_legal_moves(board);
   vector<pair<int, Move>> legalmoves;
+  legalmoves.reserve(legals.size());
   for (auto& move : legals) legalmoves.emplace_back(0, move);
 
   // conservative time management
