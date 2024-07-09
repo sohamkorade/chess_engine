@@ -297,3 +297,26 @@
 - added move manager to avoid deadlock due to recursion, i still dont know whether this is good or bad
 - made many GUI improvements, proud of myself :D
 - Maybe I should focus more on the engine now. Also, the interprocess communication (whatever it is called, for I hacked up a solution) is working just for my engine executable. For Stockfish, it just spits out a move as fast as it can (any legal move). I have to figure out why this is happening.
+
+
+## 14 Oct 2023
+
+### 3:30 am
+- wrote `test_mate.py` to test mate-in-x positions
+- checked enough positions, I'm sure that the engine is working correctly
+
+
+## 9 Jul 2024
+
+### 11:22 pm
+- wow, this is a long break! I was busy with my academics and other stuff.
+- pushed some pending changes:
+  - improved engine tester code
+- There were a lot of binaries as I archived them, so that I could run matches between different versions of the engine. Some of them are broken, so I needed to delete them. Solution: wrote a bash script to delete all bad binaries.
+- plans:
+  - read all the code again (with fresh and experienced eyes, lol)
+  - write a better tester, using some kind of framework
+  - learn about profiling and optimize the engine
+
+### 11:40 pm
+- added a utility script to convert UCI moves to PGN, helpful for debugging engine output using lichess, for example
