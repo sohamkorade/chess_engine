@@ -317,3 +317,6 @@
   - read all the code again (with fresh and experienced eyes, lol)
   - write a better tester, using some kind of framework
   - learn about profiling and optimize the engine
+
+### 11:40 pm
+- added a utility script to convert UCI moves to PGN, helpful for debugging engine output using lichess, for example
