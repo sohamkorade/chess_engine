@@ -348,14 +348,14 @@ vector<Move> generate_legal_moves(Board& board) {
     return generate_legal_moves<Black>(board);
 }
 
-bool make_move_if_legal(Board& board, string move) {
+bool make_move_if_legal(Board& board, const string& move) {
   auto m = get_move_if_legal(board, move);
   if (m.equals(0, 0)) return false;
   board.make_move(m);
   return true;
 }
 
-Move get_move_if_legal(Board& board, string move) {
+Move get_move_if_legal(Board& board, const string& move) {
   int l = move.length();
   if (l == 4 || l == 5) {
     const int from = sq2idx(move[0], move[1]);
