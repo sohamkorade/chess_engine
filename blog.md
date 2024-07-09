@@ -304,3 +304,16 @@
 ### 3:30 am
 - wrote `test_mate.py` to test mate-in-x positions
 - checked enough positions, I'm sure that the engine is working correctly
+
+
+## 9 Jul 2024
+
+### 11:22 pm
+- wow, this is a long break! I was busy with my academics and other stuff.
+- pushed some pending changes:
+  - improved engine tester code
+- There were a lot of binaries as I archived them, so that I could run matches between different versions of the engine. Some of them are broken, so I needed to delete them. Solution: wrote a bash script to delete all bad binaries.
+- plans:
+  - read all the code again (with fresh and experienced eyes, lol)
+  - write a better tester, using some kind of framework
+  - learn about profiling and optimize the engine
