@@ -28,7 +28,7 @@ array<bool, 64> get_threats(Board& board) {
   return threats;
 }
 
-bool make_move_if_legal(Board& board, string move);
-Move get_move_if_legal(Board& board, string move);
+bool make_move_if_legal(Board& board, const string& move);
+Move get_move_if_legal(Board& board, const string& move);
 
 string to_san(Board& board, Move move);

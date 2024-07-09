@@ -34,7 +34,7 @@ int perft(int argc, char* argv[]) {
     cout << "fen: " << parts[0] << endl;
     for (size_t i = 1; i < parts.size(); i++) {
       cout << parts[i] << endl;
-      int expected = stoi(parts[i].substr(parts[i].find(" ") + 1));
+      int expected = stoi(parts[i].substr(parts[i].find(' ') + 1));
       cout << "               ";
       if (expected > maxnodes) {
         cout << "skipped" << endl;

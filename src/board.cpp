@@ -266,7 +266,7 @@ string Board::to_fen() {
   for (int i = 0; i < 64; i++) {
     if (board[i] == Empty) blanks++;
     if (blanks > 0 && (board[i] != Empty || !isnt_H(i))) {
-      fen += '0' + blanks;
+      fen += char('0' + blanks);
       blanks = 0;
     }
     if (board[i] != Empty) fen += piece2char(board[i]);
