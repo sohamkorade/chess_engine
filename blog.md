@@ -320,3 +320,15 @@
 
 ### 11:40 pm
 - added a utility script to convert UCI moves to PGN, helpful for debugging engine output using lichess, for example
+
+
+## 23 Jul 2024
+
+### 12 am
+- learnt how to profile using valgrind/callgrind/kcachegrind
+  - steps:
+    - compile with `-g` flag
+    - run `valgrind --dump-instr=yes --collect-jumps=yes --tool=callgrind ./runtest perft 4000`
+    - open the output file (callgrind.out.xxxxx) using `kcachegrind`
+- found that `is_safe` function is taking a lot of time, tried to memoize it but it didn't help much (before: 0.75s, after: 5s)
+- added utility function: `movegen_speedtest`

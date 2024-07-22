@@ -64,6 +64,67 @@ int perft(int argc, char* argv[]) {
   return 0;
 }
 
+int movegen_speedtest(int argc, char* argv[]) {
+  string filename = "../tests/perftsuite.epd";
+  int maxnodes = INT_MAX;  // 1e6;
+  int times = 5;
+  if (argc > 1) maxnodes = stoi(argv[1]);
+  if (argc > 2) filename = argv[2];
+  if (argc > 3) times = stoi(argv[3]);
+
+  ifstream epd(filename);
+  Board board;
+  string line;
+  int k = 1000;
+  double total = 0;
+
+  cerr.setstate(ios_base::failbit);
+  for (int run = 0; run < times; run++) {
+    // seek epd to beginning
+    epd.clear();
+    epd.seekg(0, ios::beg);
+
+    while (getline(epd, line) && k--) {
+      // cout << "Case #" << count++ << ":" << endl;
+      vector<string> parts;
+      int start = 0;
+      int end = line.find(" ;");
+      do {
+        parts.push_back(line.substr(start, end - start));
+        start = end + 2;
+        end = line.find(" ;", start);
+      } while (~end);
+      parts.push_back(line.substr(start, end - start));
+      board.load_fen(parts[0]);
+      for (size_t i = 1; i < parts.size(); i++) {
+        int expected = stoi(parts[i].substr(parts[i].find(' ') + 1));
+        if (expected > maxnodes) {
+          continue;
+        }
+        auto begin = chrono::high_resolution_clock::now();
+        int found = divide(board, i);
+        auto end = chrono::high_resolution_clock::now();
+
+        auto elapsed =
+            chrono::duration_cast<chrono::milliseconds>(end - begin).count() *
+            1e-3;
+        total += elapsed;
+
+        if (expected != found) {
+          cout << "expected '" << expected << "' but found '" << found << "'"
+               << endl;
+          return -1;
+        }
+      }
+    }
+  }
+  cerr.clear();
+  const float avg = total / times;
+  cout << "Total time taken: " << total << endl;
+  cout << "Average time taken: " << avg << endl;
+  return 0;
+}
+
 int bestmove(int argc, char* argv[]) {
   // cout.setstate(ios_base::failbit);
   string filename = "../tests/bestmovetest.epd";
@@ -173,5 +234,6 @@ int main(int argc, char* argv[]) {
     if (!strcmp(argv[0], "perft")) perft(argc, argv);
     if (!strcmp(argv[0], "bestmove")) bestmove(argc, argv);
     if (!strcmp(argv[0], "mate")) mate(argc, argv);  // TODO: fix
+    if (!strcmp(argv[0], "movegen_speedtest")) movegen_speedtest(argc, argv);
   }
 }
