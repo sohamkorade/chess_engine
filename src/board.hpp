@@ -70,38 +70,6 @@ inline bool isnt_1(int idx) { return idx / 8 != 7; }
 Piece char2piece(char p);
 char piece2char(Piece p);
 
-template <Direction dir>
-constexpr bool is_safe(int idx) {
-  const int rank = idx / 8, file = idx % 8;
-
-  // northwards
-  if (dir == N || dir == NE || dir == NW || dir == ENE || dir == WNW)
-    if (rank < 1) return false;
-  // northwards (2 squares)
-  if (dir == NN || dir == NNE || dir == NNW)
-    if (rank < 2) return false;
-  // southwards
-  if (dir == S || dir == SE || dir == SW || dir == ESE || dir == WSW)
-    if (rank > 6) return false;
-  // southwards (2 squares)
-  if (dir == SS || dir == SSE || dir == SSW)
-    if (rank > 5) return false;
-  // eastwards
-  if (dir == E || dir == NE || dir == SE || dir == NNE || dir == SSE)
-    if (file > 6) return false;
-  // eastwards (2 squares)
-  if (dir == ENE || dir == ESE)
-    if (file > 5) return false;
-  // westwards
-  if (dir == W || dir == NW || dir == SW || dir == NNW || dir == SSW)
-    if (file < 1) return false;
-  // westwards (2 squares)
-  if (dir == WNW || dir == WSW)
-    if (file < 2) return false;
-
-  return true;
-}
-
 inline int Board::piece_color(int sq_idx) {
   if (board[sq_idx] == Empty) return 0;
   return board[sq_idx] > 0 ? White : Black;
