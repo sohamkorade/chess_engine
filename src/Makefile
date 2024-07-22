@@ -8,7 +8,7 @@ TIMESTAMP = $(shell date +%Y%m%d_%H%M)
 all: main runtest gui archive
 
 test: all
-	./test perft
+	./runtest perft 400000
 
 archive:
 	@cp main ../archive/main_$(TIMESTAMP)_$(GIT_SHA)
