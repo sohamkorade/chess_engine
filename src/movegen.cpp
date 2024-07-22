@@ -329,9 +329,9 @@ bool is_legal(Board& board, Move& move) {
 #define US(sq) is_in_threat<turn>(board.board, sq)
     if (  // white kingside castling
         (move.equals(60, 62) && (US(60) || US(61) || US(62))) ||
-        // black queenside castling
+        // black kingside castling
         (move.equals(4, 6) && (US(4) || US(5) || US(6))) ||
-        // white kingside castling
+        // white queenside castling
         (move.equals(60, 58) && (US(60) || US(59) || US(58))) ||
         // black queenside castling
         (move.equals(4, 2) && (US(4) || US(3) || US(2)))) {
