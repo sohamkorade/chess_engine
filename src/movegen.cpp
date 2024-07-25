@@ -90,7 +90,6 @@ bool is_sq_attacked_by_BRQ(Position& pos, int sq) {
   constexpr Piece opp_B = Piece(-turn * wB);
   constexpr Piece opp_R = Piece(-turn * wR);
   constexpr Piece opp_Q = Piece(-turn * wQ);
-  constexpr Piece opp_K = Piece(-turn * wK);
 
   // att_<dir> is the square where the attack comes from
 
@@ -118,7 +117,7 @@ bool is_sq_attacked_by_BRQ(Position& pos, int sq) {
 }
 
 template <Player turn>
-bool is_sq_attacked_by_KBRQ(Position& pos, int sq) {
+bool is_sq_attacked_by_K(Position& pos, int sq) {
   // opp_<piece> is an opponent piece
   constexpr Piece opp_K = Piece(-turn * wK);
 
@@ -132,14 +131,36 @@ bool is_sq_attacked_by_KBRQ(Position& pos, int sq) {
   if (is_occupied<SE, opp_K>(pos, sq)) return true;
   if (is_occupied<SW, opp_K>(pos, sq)) return true;
 
-  // check for bishop, rook, queen threats
-  if (is_sq_attacked_by_BRQ<turn>(pos, sq)) return true;
+  return false;
+}
+
+template <Player turn>
+bool is_sq_attacked_by_KBRQ(Position& pos, int sq) {
+  return is_sq_attacked_by_K<turn>(pos, sq) ||
+         is_sq_attacked_by_BRQ<turn>(pos, sq);
+}
+
+template <Player turn>
+bool is_sq_attacked_by_N(Position& pos, int sq) {
+  // opp_<piece> is an opponent piece
+  constexpr Piece opp_N = Piece(-turn * wN);
+
+  // check for knight threats
+  if (is_occupied<NNW, opp_N>(pos, sq)) return true;
+  if (is_occupied<NNE, opp_N>(pos, sq)) return true;
+  if (is_occupied<WNW, opp_N>(pos, sq)) return true;
+  if (is_occupied<WSW, opp_N>(pos, sq)) return true;
+  if (is_occupied<ENE, opp_N>(pos, sq)) return true;
+  if (is_occupied<ESE, opp_N>(pos, sq)) return true;
+  if (is_occupied<SSW, opp_N>(pos, sq)) return true;
+  if (is_occupied<SSE, opp_N>(pos, sq)) return true;
 
   return false;
 }
 
 template <Player turn>
 bool is_sq_attacked_by_KBRQ2(Position& pos, int sq) {
+  // TODO: deprecate if not used
   // opp_<piece> is an opponent piece
   constexpr Piece opp_B = Piece(-turn * wB);
   constexpr Piece opp_R = Piece(-turn * wR);
@@ -159,35 +180,21 @@ bool is_sq_attacked_by_KBRQ2(Position& pos, int sq) {
 }
 
 template <Player turn>
-bool is_in_threat(Position& pos, int sq) {
-  // generate and check reverse threats from sq
+bool is_sq_attacked_by_P(Position& pos, int sq) {
+  // opp_<piece> is an opponent piece
   constexpr Piece opp_P = Piece(-turn * wP);
-  constexpr Piece opp_N = Piece(-turn * wN);
-
-  // for debugging
-  // #define true (printf("%d\n", __LINE__) || true)
 
   // check for pawn threats (relative to turn)
-  if (is_occupied<Direction(turn * NW), opp_P>(pos, sq)) return true;
-  if (is_occupied<Direction(turn * NE), opp_P>(pos, sq)) return true;
+  return is_occupied<Direction(turn * NW), opp_P>(pos, sq) ||
+         is_occupied<Direction(turn * NE), opp_P>(pos, sq);
+}
 
-  // check for knight threats
-  if (is_occupied<NNW, opp_N>(pos, sq)) return true;
-  if (is_occupied<NNE, opp_N>(pos, sq)) return true;
-  if (is_occupied<WNW, opp_N>(pos, sq)) return true;
-  if (is_occupied<WSW, opp_N>(pos, sq)) return true;
-  if (is_occupied<ENE, opp_N>(pos, sq)) return true;
-  if (is_occupied<ESE, opp_N>(pos, sq)) return true;
-  if (is_occupied<SSW, opp_N>(pos, sq)) return true;
-  if (is_occupied<SSE, opp_N>(pos, sq)) return true;
-
-  // check for king, bishop, rook, queen threats
-  if (is_sq_attacked_by_KBRQ<turn>(pos, sq)) return true;
-  // if (is_sq_attacked_by_KBRQ2<turn>(pos, sq)) return true;
-
-#undef true
-
-  return false;  // no threats found
+template <Player turn>
+bool is_in_threat(Position& pos, int sq) {
+  // generate and check reverse threats from sq
+  return is_sq_attacked_by_P<turn>(pos, sq) ||
+         is_sq_attacked_by_N<turn>(pos, sq) ||
+         is_sq_attacked_by_KBRQ<turn>(pos, sq);
 }
 
 template <Direction dir>
