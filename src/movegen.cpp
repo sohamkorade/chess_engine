@@ -76,39 +76,39 @@ bool diagonal_threats(Position& pos, int sq) {
 template <Player turn>
 bool is_in_threat(Position& pos, int sq) {
   // generate and check reverse threats from sq
-  constexpr Piece oppK = Piece(-turn * wK);
-  constexpr Piece oppP = Piece(-turn * wP);
-  constexpr Piece oppN = Piece(-turn * wN);
-  constexpr Piece oppB = Piece(-turn * wB);
-  constexpr Piece oppR = Piece(-turn * wR);
-  constexpr Piece oppQ = Piece(-turn * wQ);
+  constexpr Piece opp_K = Piece(-turn * wK);
+  constexpr Piece opp_P = Piece(-turn * wP);
+  constexpr Piece opp_N = Piece(-turn * wN);
+  constexpr Piece opp_B = Piece(-turn * wB);
+  constexpr Piece opp_R = Piece(-turn * wR);
+  constexpr Piece opp_Q = Piece(-turn * wQ);
 
   // for debugging
   // #define true (printf("%d\n", __LINE__) || true)
 
   // check for pawn threats (relative to turn)
-  if (is_occupied<Direction(turn * NW), oppP>(pos, sq)) return true;
-  if (is_occupied<Direction(turn * NE), oppP>(pos, sq)) return true;
+  if (is_occupied<Direction(turn * NW), opp_P>(pos, sq)) return true;
+  if (is_occupied<Direction(turn * NE), opp_P>(pos, sq)) return true;
 
   // check for knight threats
-  if (is_occupied<NNW, oppN>(pos, sq)) return true;
-  if (is_occupied<NNE, oppN>(pos, sq)) return true;
-  if (is_occupied<WNW, oppN>(pos, sq)) return true;
-  if (is_occupied<WSW, oppN>(pos, sq)) return true;
-  if (is_occupied<ENE, oppN>(pos, sq)) return true;
-  if (is_occupied<ESE, oppN>(pos, sq)) return true;
-  if (is_occupied<SSW, oppN>(pos, sq)) return true;
-  if (is_occupied<SSE, oppN>(pos, sq)) return true;
+  if (is_occupied<NNW, opp_N>(pos, sq)) return true;
+  if (is_occupied<NNE, opp_N>(pos, sq)) return true;
+  if (is_occupied<WNW, opp_N>(pos, sq)) return true;
+  if (is_occupied<WSW, opp_N>(pos, sq)) return true;
+  if (is_occupied<ENE, opp_N>(pos, sq)) return true;
+  if (is_occupied<ESE, opp_N>(pos, sq)) return true;
+  if (is_occupied<SSW, opp_N>(pos, sq)) return true;
+  if (is_occupied<SSE, opp_N>(pos, sq)) return true;
 
   // check for king, bishop, rook queen threats
-  if (diagonal_threats<NW, oppB, oppQ, oppK>(pos, sq)) return true;
-  if (diagonal_threats<NE, oppB, oppQ, oppK>(pos, sq)) return true;
-  if (diagonal_threats<SW, oppB, oppQ, oppK>(pos, sq)) return true;
-  if (diagonal_threats<SE, oppB, oppQ, oppK>(pos, sq)) return true;
-  if (diagonal_threats<N, oppR, oppQ, oppK>(pos, sq)) return true;
-  if (diagonal_threats<S, oppR, oppQ, oppK>(pos, sq)) return true;
-  if (diagonal_threats<E, oppR, oppQ, oppK>(pos, sq)) return true;
-  if (diagonal_threats<W, oppR, oppQ, oppK>(pos, sq)) return true;
+  if (diagonal_threats<NW, opp_B, opp_Q, opp_K>(pos, sq)) return true;
+  if (diagonal_threats<NE, opp_B, opp_Q, opp_K>(pos, sq)) return true;
+  if (diagonal_threats<SW, opp_B, opp_Q, opp_K>(pos, sq)) return true;
+  if (diagonal_threats<SE, opp_B, opp_Q, opp_K>(pos, sq)) return true;
+  if (diagonal_threats<N, opp_R, opp_Q, opp_K>(pos, sq)) return true;
+  if (diagonal_threats<S, opp_R, opp_Q, opp_K>(pos, sq)) return true;
+  if (diagonal_threats<E, opp_R, opp_Q, opp_K>(pos, sq)) return true;
+  if (diagonal_threats<W, opp_R, opp_Q, opp_K>(pos, sq)) return true;
 
 #undef true
 
