@@ -73,15 +73,96 @@ bool diagonal_threats(Position& pos, int sq) {
   return false;
 }
 
+template <Direction dir>
+int slide_find_end(Position& pos, int sq) {
+  if (!is_safe<dir>(sq)) return -1;
+  for (int dest = sq + dir;; dest += dir) {
+    if (pos[dest] != Empty) return dest;
+    if (!is_safe<dir>(dest)) return dest;
+  }
+  return -1;
+}
+
 template <Player turn>
-bool is_in_threat(Position& pos, int sq) {
-  // generate and check reverse threats from sq
-  constexpr Piece opp_K = Piece(-turn * wK);
-  constexpr Piece opp_P = Piece(-turn * wP);
-  constexpr Piece opp_N = Piece(-turn * wN);
+bool is_sq_attacked_by_BRQ(Position& pos, int sq) {
+  // opp_<piece> is an opponent piece
+
   constexpr Piece opp_B = Piece(-turn * wB);
   constexpr Piece opp_R = Piece(-turn * wR);
   constexpr Piece opp_Q = Piece(-turn * wQ);
+  constexpr Piece opp_K = Piece(-turn * wK);
+
+  // att_<dir> is the square where the attack comes from
+
+  // rook and queen: N, S, E, W
+  const int att_N = slide_find_end<N>(pos, sq);
+  if (~att_N && (pos[att_N] == opp_R || pos[att_N] == opp_Q)) return true;
+  const int att_S = slide_find_end<S>(pos, sq);
+  if (~att_S && (pos[att_S] == opp_R || pos[att_S] == opp_Q)) return true;
+  const int att_E = slide_find_end<E>(pos, sq);
+  if (~att_E && (pos[att_E] == opp_R || pos[att_E] == opp_Q)) return true;
+  const int att_W = slide_find_end<W>(pos, sq);
+  if (~att_W && (pos[att_W] == opp_R || pos[att_W] == opp_Q)) return true;
+
+  // bishop and queen: NW, NE, SW, SE
+  const int att_NW = slide_find_end<NW>(pos, sq);
+  if (~att_NW && (pos[att_NW] == opp_B || pos[att_NW] == opp_Q)) return true;
+  const int att_SE = slide_find_end<SE>(pos, sq);
+  if (~att_SE && (pos[att_SE] == opp_B || pos[att_SE] == opp_Q)) return true;
+  const int att_NE = slide_find_end<NE>(pos, sq);
+  if (~att_NE && (pos[att_NE] == opp_B || pos[att_NE] == opp_Q)) return true;
+  const int att_SW = slide_find_end<SW>(pos, sq);
+  if (~att_SW && (pos[att_SW] == opp_B || pos[att_SW] == opp_Q)) return true;
+
+  return false;
+}
+
+template <Player turn>
+bool is_sq_attacked_by_KBRQ(Position& pos, int sq) {
+  // opp_<piece> is an opponent piece
+  constexpr Piece opp_K = Piece(-turn * wK);
+
+  // check for king threats
+  if (is_occupied<N, opp_K>(pos, sq)) return true;
+  if (is_occupied<S, opp_K>(pos, sq)) return true;
+  if (is_occupied<E, opp_K>(pos, sq)) return true;
+  if (is_occupied<W, opp_K>(pos, sq)) return true;
+  if (is_occupied<NE, opp_K>(pos, sq)) return true;
+  if (is_occupied<NW, opp_K>(pos, sq)) return true;
+  if (is_occupied<SE, opp_K>(pos, sq)) return true;
+  if (is_occupied<SW, opp_K>(pos, sq)) return true;
+
+  // check for bishop, rook, queen threats
+  if (is_sq_attacked_by_BRQ<turn>(pos, sq)) return true;
+
+  return false;
+}
+
+template <Player turn>
+bool is_sq_attacked_by_KBRQ2(Position& pos, int sq) {
+  // opp_<piece> is an opponent piece
+  constexpr Piece opp_B = Piece(-turn * wB);
+  constexpr Piece opp_R = Piece(-turn * wR);
+  constexpr Piece opp_Q = Piece(-turn * wQ);
+  constexpr Piece opp_K = Piece(-turn * wK);
+
+  // check for king, bishop, rook queen threats
+  if (diagonal_threats<NW, opp_B, opp_Q, opp_K>(pos, sq)) return true;
+  if (diagonal_threats<NE, opp_B, opp_Q, opp_K>(pos, sq)) return true;
+  if (diagonal_threats<SW, opp_B, opp_Q, opp_K>(pos, sq)) return true;
+  if (diagonal_threats<SE, opp_B, opp_Q, opp_K>(pos, sq)) return true;
+  if (diagonal_threats<N, opp_R, opp_Q, opp_K>(pos, sq)) return true;
+  if (diagonal_threats<S, opp_R, opp_Q, opp_K>(pos, sq)) return true;
+  if (diagonal_threats<E, opp_R, opp_Q, opp_K>(pos, sq)) return true;
+  if (diagonal_threats<W, opp_R, opp_Q, opp_K>(pos, sq)) return true;
+  return false;
+}
+
+template <Player turn>
+bool is_in_threat(Position& pos, int sq) {
+  // generate and check reverse threats from sq
+  constexpr Piece opp_P = Piece(-turn * wP);
+  constexpr Piece opp_N = Piece(-turn * wN);
 
   // for debugging
   // #define true (printf("%d\n", __LINE__) || true)
@@ -100,15 +181,9 @@ bool is_in_threat(Position& pos, int sq) {
   if (is_occupied<SSW, opp_N>(pos, sq)) return true;
   if (is_occupied<SSE, opp_N>(pos, sq)) return true;
 
-  // check for king, bishop, rook queen threats
-  if (diagonal_threats<NW, opp_B, opp_Q, opp_K>(pos, sq)) return true;
-  if (diagonal_threats<NE, opp_B, opp_Q, opp_K>(pos, sq)) return true;
-  if (diagonal_threats<SW, opp_B, opp_Q, opp_K>(pos, sq)) return true;
-  if (diagonal_threats<SE, opp_B, opp_Q, opp_K>(pos, sq)) return true;
-  if (diagonal_threats<N, opp_R, opp_Q, opp_K>(pos, sq)) return true;
-  if (diagonal_threats<S, opp_R, opp_Q, opp_K>(pos, sq)) return true;
-  if (diagonal_threats<E, opp_R, opp_Q, opp_K>(pos, sq)) return true;
-  if (diagonal_threats<W, opp_R, opp_Q, opp_K>(pos, sq)) return true;
+  // check for king, bishop, rook, queen threats
+  if (is_sq_attacked_by_KBRQ<turn>(pos, sq)) return true;
+  // if (is_sq_attacked_by_KBRQ2<turn>(pos, sq)) return true;
 
 #undef true
 

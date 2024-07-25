@@ -332,3 +332,12 @@
     - open the output file (callgrind.out.xxxxx) using `kcachegrind`
 - found that `is_safe` function is taking a lot of time, tried to memoize it but it didn't help much (before: 0.75s, after: 5s)
 - added utility function: `movegen_speedtest`
+
+
+## 26 Jul 2024
+
+### 3 am
+- modularized `is_in_threat` function
+  - wrote `slide_find_end` function that returns the end square if a piece slides in a direction, and pieces on those squares are checked for threats
+  - this intends to replace `diagonal_threats` which checked two pieces at a time for threats
+  - this change made move generation ~14% faster!
