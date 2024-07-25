@@ -86,32 +86,28 @@ int slide_find_end(Position& pos, int sq) {
 template <Player turn>
 bool is_sq_attacked_by_BRQ(Position& pos, int sq) {
   // opp_<piece> is an opponent piece
-
   constexpr Piece opp_B = Piece(-turn * wB);
   constexpr Piece opp_R = Piece(-turn * wR);
   constexpr Piece opp_Q = Piece(-turn * wQ);
 
-  // att_<dir> is the square where the attack comes from
+#define check(p1, p2, dir)                                                   \
+  {                                                                          \
+    const int blocker = slide_find_end<dir>(pos, sq);                        \
+    if (~blocker && (pos[blocker] == p1 || pos[blocker] == p2)) return true; \
+  }
 
-  // rook and queen: N, S, E, W
-  const int att_N = slide_find_end<N>(pos, sq);
-  if (~att_N && (pos[att_N] == opp_R || pos[att_N] == opp_Q)) return true;
-  const int att_S = slide_find_end<S>(pos, sq);
-  if (~att_S && (pos[att_S] == opp_R || pos[att_S] == opp_Q)) return true;
-  const int att_E = slide_find_end<E>(pos, sq);
-  if (~att_E && (pos[att_E] == opp_R || pos[att_E] == opp_Q)) return true;
-  const int att_W = slide_find_end<W>(pos, sq);
-  if (~att_W && (pos[att_W] == opp_R || pos[att_W] == opp_Q)) return true;
+  // bishop and queen attacks
+  check(opp_B, opp_Q, NW);
+  check(opp_B, opp_Q, NE);
+  check(opp_B, opp_Q, SW);
+  check(opp_B, opp_Q, SE);
+  // rook and queen attacks
+  check(opp_R, opp_Q, N);
+  check(opp_R, opp_Q, S);
+  check(opp_R, opp_Q, E);
+  check(opp_R, opp_Q, W);
 
-  // bishop and queen: NW, NE, SW, SE
-  const int att_NW = slide_find_end<NW>(pos, sq);
-  if (~att_NW && (pos[att_NW] == opp_B || pos[att_NW] == opp_Q)) return true;
-  const int att_SE = slide_find_end<SE>(pos, sq);
-  if (~att_SE && (pos[att_SE] == opp_B || pos[att_SE] == opp_Q)) return true;
-  const int att_NE = slide_find_end<NE>(pos, sq);
-  if (~att_NE && (pos[att_NE] == opp_B || pos[att_NE] == opp_Q)) return true;
-  const int att_SW = slide_find_end<SW>(pos, sq);
-  if (~att_SW && (pos[att_SW] == opp_B || pos[att_SW] == opp_Q)) return true;
+#undef check
 
   return false;
 }
