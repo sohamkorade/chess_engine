@@ -417,7 +417,7 @@ bool is_legal(Board& board, Move& move) {
   } else {
     // check if king is threatened
     board.make_move(move);
-    legal = !is_in_check(board, turn);
+    legal = !is_in_check<turn>(board);
     board.unmake_move(move);
   }
   return legal;
