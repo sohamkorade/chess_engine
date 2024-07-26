@@ -6,7 +6,6 @@
 #include "search.hpp"
 
 int perft(int argc, char* argv[]) {
-  // cout.setstate(ios_base::failbit);
   string filename = "../tests/perftsuite.epd";
   int maxnodes = INT_MAX;  // 1e6;
   if (argc > 1) maxnodes = stoi(argv[1]);
@@ -18,7 +17,6 @@ int perft(int argc, char* argv[]) {
   int k = 1000;
   int count = 1;
   double total = 0;
-  cerr.setstate(ios_base::failbit);
   while (getline(epd, line) && k--) {
     cout << "Case #" << count++ << ":" << endl;
     vector<string> parts;
@@ -40,9 +38,12 @@ int perft(int argc, char* argv[]) {
         cout << "skipped" << endl;
         continue;
       }
+
+      cout.setstate(ios_base::failbit);
       auto begin = chrono::high_resolution_clock::now();
       int found = divide(board, i);
       auto end = chrono::high_resolution_clock::now();
+      cout.clear();
 
       auto elapsed =
           chrono::duration_cast<chrono::milliseconds>(end - begin).count() *
@@ -59,7 +60,6 @@ int perft(int argc, char* argv[]) {
       }
     }
   }
-  cerr.clear();
   cout << "Total time taken: " << total << endl;
   return 0;
 }
@@ -78,7 +78,6 @@ int movegen_speedtest(int argc, char* argv[]) {
   int k = 1000;
   double total = 0;
 
-  cerr.setstate(ios_base::failbit);
   for (int run = 0; run < times; run++) {
     // seek epd to beginning
     epd.clear();
@@ -101,9 +100,12 @@ int movegen_speedtest(int argc, char* argv[]) {
         if (expected > maxnodes) {
           continue;
         }
+
+        cout.setstate(ios_base::failbit);
         auto begin = chrono::high_resolution_clock::now();
         int found = divide(board, i);
         auto end = chrono::high_resolution_clock::now();
+        cout.clear();
 
         auto elapsed =
             chrono::duration_cast<chrono::milliseconds>(end - begin).count() *
@@ -118,7 +120,6 @@ int movegen_speedtest(int argc, char* argv[]) {
       }
     }
   }
-  cerr.clear();
   const float avg = total / times;
   cout << "Total time taken: " << total << endl;
   cout << "Average time taken: " << avg << endl;
@@ -126,7 +127,6 @@ int movegen_speedtest(int argc, char* argv[]) {
 }
 
 int bestmove(int argc, char* argv[]) {
-  // cout.setstate(ios_base::failbit);
   string filename = "../tests/bestmovetest.epd";
   if (argc > 1) filename = argv[1];
   ifstream epd(filename);
@@ -138,7 +138,6 @@ int bestmove(int argc, char* argv[]) {
   int k = 1000;
   int count = 1;
   double total = 0;
-  cerr.setstate(ios_base::failbit);
   while (getline(epd, line) && k--) {
     cout << "Case #" << count++ << ":" << endl;
     vector<string> parts;
@@ -152,11 +151,14 @@ int bestmove(int argc, char* argv[]) {
     parts.push_back(line.substr(start, end - start));
     if (!b.load_fen(parts[0])) cout << "Unable to parse FEN" << endl;
 
-    cout << "\e[35m";
     ai.board = b;
+
+    cout << "\e[35m";
+    cerr.setstate(ios_base::failbit);
     auto begint = chrono::high_resolution_clock::now();
     string found = to_san(b, ai.search().first);
     auto endt = chrono::high_resolution_clock::now();
+    cerr.clear();
     cout << "\e[0m";
 
     auto elapsed =
@@ -175,7 +177,6 @@ int bestmove(int argc, char* argv[]) {
 
     // if (!correct) break;
   }
-  cerr.clear();
   cout << "total time: " << total << "s" << endl;
 
   return 0;
@@ -207,17 +208,18 @@ int mate(int argc, char* argv[]) {
     int ans = stoi(line.substr(line.find("; M") + 3));
     // cout << "mate in " << ans << endl;
     cout << "[" << i++ << "] in: " << line << endl;
+
     cout.setstate(ios_base::failbit);
     auto begint = chrono::high_resolution_clock::now();
     Move bestmove = ai.search().first;
     auto endt = chrono::high_resolution_clock::now();
+    cout.clear();
 
     auto elapsed =
         chrono::duration_cast<chrono::milliseconds>(endt - begint).count() *
         1e-3;
     total += elapsed;
 
-    cout.clear();
     cout << "out: " << to_san(b, bestmove) << " mate " << ai.debug << endl;
     cout << (stoi(ai.debug) == ans ? PASS : FAIL) << " [" << elapsed << "s]"
          << endl;
