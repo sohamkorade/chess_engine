@@ -290,8 +290,6 @@ int perft(Board& board, int depth) {
 
 int divide(Board& board, int depth) {
   int sum = 0;
-  vector<string> moves;
-  moves.reserve(40);
   auto t1 = chrono::high_resolution_clock::now();
   auto legal = generate_legal_moves(board);
   // Board before = board;
@@ -311,16 +309,14 @@ int divide(Board& board, int depth) {
     //   break;
     // }
     sum += nodes;
-    moves.push_back(move.to_uci() + ": " + to_string(nodes));
+    cout << move.to_uci() << ": " << nodes << endl;
   }
   auto t2 = chrono::high_resolution_clock::now();
   auto diff = chrono::duration_cast<chrono::nanoseconds>(t2 - t1).count();
 
-  sort(moves.begin(), moves.end());
-  for (auto& move : moves) cerr << move << endl;
-  cerr << "Moves: " << legal.size() << endl;
-  cerr << "Nodes: " << sum << endl;
-  cerr << "Nodes/sec: " << int(diff ? sum * 1e9 / diff : -1) << endl;
+  cout << "Moves: " << legal.size() << endl;
+  cout << "Nodes: " << sum << endl;
+  cout << "Nodes/sec: " << int(diff ? sum * 1e9 / diff : -1) << endl;
   return sum;
 }
 
