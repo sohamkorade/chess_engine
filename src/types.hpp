@@ -19,6 +19,7 @@
 using namespace std;
 
 enum Direction : char {
+  EmptyDirection = 0,
   N = -8,
   S = +8,
   E = +1,

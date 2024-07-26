@@ -341,3 +341,14 @@
   - wrote `slide_find_end` function that returns the end square if a piece slides in a direction, and pieces on those squares are checked for threats
   - this intends to replace `diagonal_threats` which checked two pieces at a time for threats
   - this change made move generation ~14% faster!
+
+
+## 27 Jul 2024
+
+### 2:56 am
+- made move generation 33% faster!!!
+  - this was a result of rewriting the whole legal move generation logic
+  - earlier, I was generating all pseudo-legal moves and then checking if they are legal
+  - now, I generate only legal moves
+    - so many conditions to handle: single check, double check, absolute pins, castling, en passant, x-ray attacks on king, capturing checking pieces, interposing pieces in check, etc.
+  - yet to simplify the code, it's become a bit complex now

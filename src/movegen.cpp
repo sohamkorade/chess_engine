@@ -4,6 +4,9 @@ template <Direction dir>
 constexpr bool is_safe(int idx) {
   const int rank = idx / 8, file = idx % 8;
 
+  // // always true cases
+  // if (idx >= 8 * 2 && idx <= 8 * 5 && file >= 2 && file <= 5) return true;
+
   // northwards
   if (dir == N || dir == NE || dir == NW || dir == ENE || dir == WNW)
     if (rank < 1) return false;
@@ -78,7 +81,7 @@ int slide_find_end(Position& pos, int sq) {
   if (!is_safe<dir>(sq)) return -1;
   for (int dest = sq + dir;; dest += dir) {
     if (pos[dest] != Empty) return dest;
-    if (!is_safe<dir>(dest)) return dest;
+    if (!is_safe<dir>(dest)) return -1;
   }
   return -1;
 }
@@ -408,8 +411,417 @@ bool is_legal(Board& board, Move& move) {
   return legal;
 }
 
+template <Direction dir, Piece p1, Piece p2, Piece King>
+void slide_capture_threat(Position& pos, vector<Move>& movelist, int sq) {
+  if (!is_safe<dir>(sq)) return;
+  for (int dest = sq + dir; !friendly(pos[sq], pos[dest]); dest += dir) {
+    if (pos[dest] == p1 || pos[dest] == p2) {
+      slide<dir>(pos, movelist, sq);
+      break;
+    }
+    if (pos[dest] != Empty) break;
+    if (!is_safe<dir>(dest)) break;
+  }
+}
+
+Direction get_absolute_pin_attacker_dir(Board& board, int sq) {
+  const Piece rel_K = Piece(board.turn * wK);
+  const Piece opp_B = Piece(-board.turn * wB);
+  const Piece opp_R = Piece(-board.turn * wR);
+  const Piece opp_Q = Piece(-board.turn * wQ);
+
+  auto& pos = board.board;
+
+  // vertical
+  const int north = slide_find_end<N>(pos, sq);
+  const int south = slide_find_end<S>(pos, sq);
+  if (~north && ~south) {
+    if (pos[north] == rel_K && (pos[south] == opp_R || pos[south] == opp_Q))
+      return S;
+    if (pos[south] == rel_K && (pos[north] == opp_R || pos[north] == opp_Q))
+      return N;
+  }
+  // horizontal
+  const int east = slide_find_end<E>(pos, sq);
+  const int west = slide_find_end<W>(pos, sq);
+  if (~east && ~west) {
+    if (pos[east] == rel_K && (pos[west] == opp_R || pos[west] == opp_Q))
+      return W;
+    if (pos[west] == rel_K && (pos[east] == opp_R || pos[east] == opp_Q))
+      return E;
+  }
+  // diagonal
+  const int northwest = slide_find_end<NW>(pos, sq);
+  const int southeast = slide_find_end<SE>(pos, sq);
+  if (~northwest && ~southeast) {
+    if (pos[northwest] == rel_K &&
+        (pos[southeast] == opp_B || pos[southeast] == opp_Q))
+      return SE;
+    if (pos[southeast] == rel_K &&
+        (pos[northwest] == opp_B || pos[northwest] == opp_Q))
+      return NW;
+  }
+  const int northeast = slide_find_end<NE>(pos, sq);
+  const int southwest = slide_find_end<SW>(pos, sq);
+  if (~northeast && ~southwest) {
+    if (pos[northeast] == rel_K &&
+        (pos[southwest] == opp_B || pos[southwest] == opp_Q))
+      return SW;
+    if (pos[southwest] == rel_K &&
+        (pos[northeast] == opp_B || pos[northeast] == opp_Q))
+      return NE;
+  }
+
+  return EmptyDirection;
+}
+
+template <Player turn>
+void generate_king_moves_safe_xray(Board& board, vector<Move>& movelist) {
+  // generate king moves, except castling
+  const int K_pos = turn == White ? board.Kpos : board.kpos;
+  const Piece rel_K = Piece(turn * wK);
+  // remove king
+  board.board[K_pos] = Empty;
+#define jump(dir)                                                          \
+  if (is_safe<dir>(K_pos) && !friendly(rel_K, board.board[K_pos + dir]) && \
+      !is_in_threat<turn>(board.board, K_pos + dir))                       \
+    movelist.emplace_back(K_pos, K_pos + dir);
+  jump(NE) jump(NW) jump(SE) jump(SW) jump(N) jump(S) jump(E) jump(W)
+#undef jump
+      // add king back
+      board.board[K_pos] = rel_K;
+}
+
+template <Player turn>
+void generate_promotion_moves_safe(Position& pos, vector<Move>& movelist,
+                                   int sq) {
+  const Direction rel_North = turn == White ? N : S;
+  const Direction rel_NW = turn == White ? NW : SW;
+  const Direction rel_NE = turn == White ? NE : SE;
+
+#define promote(dir)                   \
+  for (auto& piece : {wQ, wR, wB, wN}) \
+    movelist.emplace_back(sq, sq + dir, Piece(piece * turn));
+  if (pos[sq + rel_North] == Empty) promote(rel_North);
+  if (isnt_A(sq) && hostile(pos[sq], pos[sq + rel_NW])) promote(rel_NW);
+  if (isnt_H(sq) && hostile(pos[sq], pos[sq + rel_NE])) promote(rel_NE);
+#undef promote
+}
+
+template <Player turn>
+void generate_en_passant_moves_safe(Board& board, vector<Move>& movelist) {
+  constexpr Piece opp_P = Piece(-turn * wP);
+  constexpr Piece rel_P = Piece(wP * turn);
+  constexpr Direction rel_SW = turn == White ? SW : NW;
+  constexpr Direction rel_SE = turn == White ? SE : NE;
+  constexpr Direction rel_S = turn == White ? S : N;
+
+  // en-passant
+  const auto& ep_sq = board.enpassant_sq_idx;
+  // only one enpassant square can be occupied at a time, so `else` is
+  // safe
+  if (~ep_sq) {
+    // remove enpassant pawn
+    board.board[ep_sq + rel_S] = Empty;
+
+    // capture enpassant NW
+    if (is_occupied<rel_SE, rel_P>(board.board, ep_sq))
+      if (get_absolute_pin_attacker_dir(board, ep_sq + rel_SE) ==
+          EmptyDirection)
+        movelist.emplace_back(ep_sq + rel_SE, ep_sq, Empty, Empty, true);
+    // capture enpassant NE
+    if (is_occupied<rel_SW, rel_P>(board.board, ep_sq))
+      if (get_absolute_pin_attacker_dir(board, ep_sq + rel_SW) ==
+          EmptyDirection)
+        movelist.emplace_back(ep_sq + rel_SW, ep_sq, Empty, Empty, true);
+    // add enpassant pawn back
+    board.board[ep_sq + rel_S] = opp_P;
+  }
+}
+
+template <Player turn>
+void generate_castling_moves_safe(Board& board, vector<Move>& movelist) {
+  auto castling_rights = board.castling_rights;
+  // check if any squares that king moves to are threatened
+// check unsafe square
+#define US(sq) is_in_threat<turn>(board.board, sq)
+#define empty board.empty
+
+  if constexpr (turn == White) {
+    // kingside
+    if (castling_rights[0] && empty(61) && empty(62) &&
+        !(US(60) || US(61) || US(62)))
+      movelist.emplace_back(60, 60 + E + E, Empty, Empty, false, true);
+    // queenside
+    if (castling_rights[1] && empty(57) && empty(58) && empty(59) &&
+        !(US(60) || US(59) || US(58)))
+      movelist.emplace_back(60, 60 + W + W, Empty, Empty, false, true);
+  } else {
+    // kingside
+    if (castling_rights[2] && empty(5) && empty(6) &&
+        !(US(4) || US(5) || US(6)))
+      movelist.emplace_back(4, 4 + E + E, Empty, Empty, false, true);
+    // queenside
+    if (castling_rights[3] && empty(1) && empty(2) && empty(3) &&
+        !(US(4) || US(3) || US(2)))
+      movelist.emplace_back(4, 4 + W + W, Empty, Empty, false, true);
+  }
+
+#undef empty
+#undef US
+}
+
+template <Player turn>
+vector<Move> generate_legal_moves2(Board& board) {
+  vector<Move> movelist;
+  movelist.reserve(30);  // average number of legal moves per position
+
+  constexpr Piece rel_P = Piece(wP * turn);
+  constexpr Piece rel_N = Piece(wN * turn);
+  constexpr Piece rel_B = Piece(wB * turn);
+  constexpr Piece rel_R = Piece(wR * turn);
+  constexpr Piece rel_Q = Piece(wQ * turn);
+
+  constexpr Piece opp_P = Piece(-turn * wP);
+  constexpr Piece opp_N = Piece(-turn * wN);
+  constexpr Piece opp_B = Piece(-turn * wB);
+  constexpr Piece opp_R = Piece(-turn * wR);
+  constexpr Piece opp_Q = Piece(-turn * wQ);
+
+  constexpr Direction rel_NW = turn == White ? NW : SW;
+  constexpr Direction rel_NE = turn == White ? NE : SE;
+  constexpr Direction rel_North = turn == White ? N : S;
+  constexpr Direction rel_NN = turn == White ? NN : SS;
+
+  const bool king_in_check = is_in_check<turn>(board);
+  auto& pos = board.board;
+
+  const int K_pos = turn == White ? board.Kpos : board.kpos;
+
+  int attackers_n = 0;
+  int intermediate_sq[7] = {-1, -1, -1, -1, -1, -1, -1};
+#define is_intermediate_sq(sq)                                 \
+  ((sq) == intermediate_sq[0] || (sq) == intermediate_sq[1] || \
+   (sq) == intermediate_sq[2] || (sq) == intermediate_sq[3] || \
+   (sq) == intermediate_sq[4] || (sq) == intermediate_sq[5] || \
+   (sq) == intermediate_sq[6])
+
+#define check_slider(p1, p2, dir)                               \
+  if (const int blocker = slide_find_end<dir>(pos, K_pos);      \
+      ~blocker && (pos[blocker] == p1 || pos[blocker] == p2)) { \
+    attackers_n++;                                              \
+    int temp = K_pos + dir;                                     \
+    for (int i = 0; i < 7; i++) {                               \
+      intermediate_sq[i] = temp;                                \
+      if (temp == blocker) break;                               \
+      temp += dir;                                              \
+    }                                                           \
+  }
+  // rook and queen attacks
+  check_slider(opp_R, opp_Q, N);
+  check_slider(opp_R, opp_Q, S);
+  check_slider(opp_R, opp_Q, E);
+  check_slider(opp_R, opp_Q, W);
+  // bishop and queen attacks
+  check_slider(opp_B, opp_Q, NW);
+  check_slider(opp_B, opp_Q, NE);
+  check_slider(opp_B, opp_Q, SW);
+  check_slider(opp_B, opp_Q, SE);
+#undef check_slider
+  // knight attacks
+  // check for knight attacks
+#define check_knight(dir)                    \
+  if (is_occupied<dir, opp_N>(pos, K_pos)) { \
+    attackers_n++;                           \
+    intermediate_sq[0] = K_pos + dir;        \
+  }
+  check_knight(NNW) check_knight(NNE);
+  check_knight(WNW) check_knight(WSW);
+  check_knight(ENE) check_knight(ESE);
+  check_knight(SSW) check_knight(SSE);
+#undef check_knight
+  // pawn attacks
+  // check for pawn attacks (relative to turn)
+#define check_pawn(dir)                      \
+  if (is_occupied<dir, opp_P>(pos, K_pos)) { \
+    attackers_n++;                           \
+    intermediate_sq[0] = K_pos + dir;        \
+  }
+  check_pawn(rel_NW) check_pawn(rel_NE);
+#undef check_pawn
+
+  generate_castling_moves_safe<turn>(board, movelist);
+  generate_en_passant_moves_safe<turn>(board, movelist);
+  generate_king_moves_safe_xray<turn>(board, movelist);
+
+  for (int sq = 0; sq < 64; sq++) {
+    const Piece p = pos[sq];
+    if (p == Empty) continue;
+
+    const int attacker_dir = get_absolute_pin_attacker_dir(board, sq);
+    const int rank = sq / 8;
+    const int rel_rank = turn == White ? rank : 7 - rank;
+
+    if (king_in_check) {
+      if (attacker_dir == EmptyDirection) {  // no pin
+        if (attackers_n == 1) {              // single check
+          // capture checking piece with unpinned piece
+          // interpose unpinned piece in between king and attacker
+          if (p == rel_P) {
+            if (rel_rank != 1) {  // non-promotion moves
+              // capture NW and NE
+              if (is_intermediate_sq(sq + rel_NW))
+                only_capture<rel_NW>(pos, movelist, sq);
+              if (is_intermediate_sq(sq + rel_NE))
+                only_capture<rel_NE>(pos, movelist, sq);
+
+              // push
+              if (is_intermediate_sq(sq + rel_North))
+                only_move<rel_North>(pos, movelist, sq);
+              // double push
+              if (rel_rank == 6)
+                if (is_safe<rel_North>(sq) && pos[sq + rel_North] == Empty)
+                  if (is_intermediate_sq(sq + rel_NN))
+                    only_move<rel_NN>(pos, movelist, sq);
+
+            } else {  // promotion moves
+              if (is_intermediate_sq(sq + rel_NW))
+                if (isnt_A(sq) && hostile(pos[sq], pos[sq + rel_NW]))
+                  for (auto& piece : {wQ, wR, wB, wN})
+                    movelist.emplace_back(sq, sq + rel_NW, Piece(piece * turn));
+              if (is_intermediate_sq(sq + rel_NE))
+                if (isnt_H(sq) && hostile(pos[sq], pos[sq + rel_NE]))
+                  for (auto& piece : {wQ, wR, wB, wN})
+                    movelist.emplace_back(sq, sq + rel_NE, Piece(piece * turn));
+            }
+          }
+          if (p == rel_N) {
+            if (is_intermediate_sq(sq + NNW)) jump<NNW>(pos, movelist, sq);
+            if (is_intermediate_sq(sq + NNE)) jump<NNE>(pos, movelist, sq);
+            if (is_intermediate_sq(sq + WNW)) jump<WNW>(pos, movelist, sq);
+            if (is_intermediate_sq(sq + WSW)) jump<WSW>(pos, movelist, sq);
+            if (is_intermediate_sq(sq + ENE)) jump<ENE>(pos, movelist, sq);
+            if (is_intermediate_sq(sq + ESE)) jump<ESE>(pos, movelist, sq);
+            if (is_intermediate_sq(sq + SSW)) jump<SSW>(pos, movelist, sq);
+            if (is_intermediate_sq(sq + SSE)) jump<SSE>(pos, movelist, sq);
+          }
+#define slide2(dir)                                                         \
+  if (is_safe<dir>(sq)) {                                                   \
+    for (int dest = sq + dir; !friendly(pos[sq], pos[dest]); dest += dir) { \
+      if (is_intermediate_sq(dest)) {                                       \
+        movelist.emplace_back(sq, dest);                                    \
+      }                                                                     \
+      if (pos[dest] != Empty) break;                                        \
+      if (!is_safe<dir>(dest)) break;                                       \
+    }                                                                       \
+  }
+          if (p == rel_B || p == rel_Q) {
+            slide2(NW);
+            slide2(NE);
+            slide2(SW);
+            slide2(SE);
+          }
+          if (p == rel_R || p == rel_Q) {
+            slide2(N);
+            slide2(S);
+            slide2(E);
+            slide2(W);
+          }
+        }
+      }
+    } else {
+      if (attacker_dir == EmptyDirection) {  // no pin
+        if (p == rel_P) {
+          if (rel_rank != 1) {  // non-promotion moves
+            generate_pawn_moves<turn>(pos, movelist, sq);
+          } else {  // promotion moves
+            generate_promotion_moves_safe<turn>(pos, movelist, sq);
+          }
+        }
+        if (p == rel_N) {
+          jump<NNW>(pos, movelist, sq);
+          jump<NNE>(pos, movelist, sq);
+          jump<WNW>(pos, movelist, sq);
+          jump<WSW>(pos, movelist, sq);
+          jump<ENE>(pos, movelist, sq);
+          jump<ESE>(pos, movelist, sq);
+          jump<SSW>(pos, movelist, sq);
+          jump<SSE>(pos, movelist, sq);
+        }
+        if (p == rel_B || p == rel_Q) {
+          slide<NW>(pos, movelist, sq);
+          slide<NE>(pos, movelist, sq);
+          slide<SW>(pos, movelist, sq);
+          slide<SE>(pos, movelist, sq);
+        }
+        if (p == rel_R || p == rel_Q) {
+          slide<N>(pos, movelist, sq);
+          slide<S>(pos, movelist, sq);
+          slide<E>(pos, movelist, sq);
+          slide<W>(pos, movelist, sq);
+        }
+      } else {  // pin
+        if (p == rel_P) {
+          if (rel_rank != 1) {  // non-promotion moves
+            if (attacker_dir == N || attacker_dir == S) {
+              // generate_pawn_moves<turn>(pos, movelist, sq);
+              // push
+              if (only_move<rel_North>(pos, movelist, sq))
+                // double push only if push succeeds
+                if (rel_rank == 6) only_move<rel_NN>(pos, movelist, sq);
+            } else if (attacker_dir == rel_NW) {
+              only_capture<rel_NW>(pos, movelist, sq);
+            } else if (attacker_dir == rel_NE) {
+              only_capture<rel_NE>(pos, movelist, sq);
+            }
+          } else {  // promotion moves
+            if (attacker_dir == N || attacker_dir == S) {
+              generate_promotion_moves_safe<turn>(pos, movelist, sq);
+            } else if (attacker_dir == rel_NW) {
+              if (isnt_A(sq) && hostile(pos[sq], pos[sq + rel_NW]))
+                for (auto& piece : {wQ, wR, wB, wN})
+                  movelist.emplace_back(sq, sq + rel_NW, Piece(piece * turn));
+            } else if (attacker_dir == rel_NE) {
+              if (isnt_H(sq) && hostile(pos[sq], pos[sq + rel_NE]))
+                for (auto& piece : {wQ, wR, wB, wN})
+                  movelist.emplace_back(sq, sq + rel_NE, Piece(piece * turn));
+            }
+          }
+        }
+// slide_capture_threat<attacker_dir, rel_B, rel_Q, rel_K>(pos, movelist, sq);
+#define slide_capture(dir)                         \
+  if (attacker_dir == dir) {                       \
+    slide<dir>(pos, movelist, sq);                 \
+    slide<Direction(dir * -1)>(pos, movelist, sq); \
+  }
+
+        if (p == rel_B || p == rel_Q) {
+          slide_capture(NW) slide_capture(NE) slide_capture(SW)
+              slide_capture(SE)
+        }
+        if (p == rel_R || p == rel_Q) {
+          slide_capture(N) slide_capture(S) slide_capture(E) slide_capture(W)
+        }
+
+#undef slide_capture
+      }
+    }
+  }
+#undef is_intermediate_sq
+  return movelist;
+}
+
+vector<Move> generate_legal_moves2(Board& board) {
+  if (board.turn == White)
+    return generate_legal_moves2<White>(board);
+  else
+    return generate_legal_moves2<Black>(board);
+}
+
 template <Player turn>
 vector<Move> generate_legal_moves(Board& board) {
+  return generate_legal_moves2<turn>(board);
+
   // cout << "gen legal @" << zobrist_hash() << endl;
   auto movelist = generate_pseudo_moves<turn>(board);
   vector<Move> better_moves, others;
