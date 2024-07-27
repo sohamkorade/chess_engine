@@ -424,11 +424,12 @@ void slide_capture_threat(Position& pos, vector<Move>& movelist, int sq) {
   }
 }
 
+template <Player turn>
 Direction get_absolute_pin_attacker_dir(Board& board, int sq) {
-  const Piece rel_K = Piece(board.turn * wK);
-  const Piece opp_B = Piece(-board.turn * wB);
-  const Piece opp_R = Piece(-board.turn * wR);
-  const Piece opp_Q = Piece(-board.turn * wQ);
+  constexpr Piece rel_K = Piece(turn * wK);
+  constexpr Piece opp_B = Piece(-turn * wB);
+  constexpr Piece opp_R = Piece(-turn * wR);
+  constexpr Piece opp_Q = Piece(-turn * wQ);
 
   auto& pos = board.board;
 
@@ -526,12 +527,12 @@ void generate_en_passant_moves_safe(Board& board, vector<Move>& movelist) {
 
     // capture enpassant NW
     if (is_occupied<rel_SE, rel_P>(board.board, ep_sq))
-      if (get_absolute_pin_attacker_dir(board, ep_sq + rel_SE) ==
+      if (get_absolute_pin_attacker_dir<turn>(board, ep_sq + rel_SE) ==
           EmptyDirection)
         movelist.emplace_back(ep_sq + rel_SE, ep_sq, Empty, Empty, true);
     // capture enpassant NE
     if (is_occupied<rel_SW, rel_P>(board.board, ep_sq))
-      if (get_absolute_pin_attacker_dir(board, ep_sq + rel_SW) ==
+      if (get_absolute_pin_attacker_dir<turn>(board, ep_sq + rel_SW) ==
           EmptyDirection)
         movelist.emplace_back(ep_sq + rel_SW, ep_sq, Empty, Empty, true);
     // add enpassant pawn back
@@ -658,7 +659,7 @@ vector<Move> generate_legal_moves2(Board& board) {
     const Piece p = pos[sq];
     if (p == Empty) continue;
 
-    const int attacker_dir = get_absolute_pin_attacker_dir(board, sq);
+    const int attacker_dir = get_absolute_pin_attacker_dir<turn>(board, sq);
     const int rank = sq / 8;
     const int rel_rank = turn == White ? rank : 7 - rank;
 
