@@ -275,54 +275,6 @@ void generate_castling_moves(Board& board, vector<Move>& pseudo) {
 #undef empty
 }
 
-int perft(Board& board, int depth) {
-  if (depth <= 0) return 1;
-
-  auto legal = generate_legal_moves(board);
-  if (depth == 1) return legal.size();
-
-  int nodes = 0;
-
-  for (auto& move : legal) {
-    board.make_move(move);
-    nodes += perft(board, depth - 1);
-    board.unmake_move(move);
-  }
-  return nodes;
-}
-
-int divide(Board& board, int depth) {
-  int sum = 0;
-  auto t1 = chrono::high_resolution_clock::now();
-  auto legal = generate_legal_moves(board);
-  // Board before = board;
-  for (auto& move : legal) {
-    board.make_move(move);
-    // Board after = board;
-    int nodes = perft(board, depth - 1);
-    board.unmake_move(move);
-    // if (before.to_fen() != board.to_fen()) {
-    //   cerr << "! "
-    //        << "undo failed" << endl;
-    //   cerr << "move: ";
-    //   move.print();
-    //   cerr << "before:       " << before.to_fen() << endl;
-    //   cerr << "after move:   " << after.to_fen() << endl;
-    //   cerr << "after unmove: " << board.to_fen() << endl;
-    //   break;
-    // }
-    sum += nodes;
-    cout << move.to_uci() << ": " << nodes << endl;
-  }
-  auto t2 = chrono::high_resolution_clock::now();
-  auto diff = chrono::duration_cast<chrono::nanoseconds>(t2 - t1).count();
-
-  cout << "Moves: " << legal.size() << endl;
-  cout << "Nodes: " << sum << endl;
-  cout << "Nodes/sec: " << int(diff ? sum * 1e9 / diff : -1) << endl;
-  return sum;
-}
-
 template <Player turn>
 vector<Move> generate_pseudo_moves(Board& board) {
   // cout << "gen pseudo @" << zobrist_hash() << endl;
@@ -572,7 +524,7 @@ void generate_castling_moves_safe(Board& board, vector<Move>& movelist) {
 #undef US
 }
 
-template <Player turn>
+template <Player turn, MoveGenType type>
 vector<Move> generate_legal_moves2(Board& board) {
   vector<Move> movelist;
   movelist.reserve(30);  // average number of legal moves per position
@@ -594,7 +546,6 @@ vector<Move> generate_legal_moves2(Board& board) {
   constexpr Direction rel_North = turn == White ? N : S;
   constexpr Direction rel_NN = turn == White ? NN : SS;
 
-  const bool king_in_check = is_in_check<turn>(board);
   auto& pos = board.board;
 
   const int K_pos = turn == White ? board.Kpos : board.kpos;
@@ -663,7 +614,7 @@ vector<Move> generate_legal_moves2(Board& board) {
     const int rank = sq / 8;
     const int rel_rank = turn == White ? rank : 7 - rank;
 
-    if (king_in_check) {
+    if (type == Evasions) {
       if (attacker_dir == EmptyDirection) {  // no pin
         if (attackers_n == 1) {              // single check
           // capture checking piece with unpinned piece
@@ -795,7 +746,6 @@ vector<Move> generate_legal_moves2(Board& board) {
     slide<dir>(pos, movelist, sq);                 \
     slide<Direction(dir * -1)>(pos, movelist, sq); \
   }
-
         if (p == rel_B || p == rel_Q) {
           slide_capture(NW) slide_capture(NE) slide_capture(SW)
               slide_capture(SE)
@@ -803,7 +753,6 @@ vector<Move> generate_legal_moves2(Board& board) {
         if (p == rel_R || p == rel_Q) {
           slide_capture(N) slide_capture(S) slide_capture(E) slide_capture(W)
         }
-
 #undef slide_capture
       }
     }
@@ -812,16 +761,21 @@ vector<Move> generate_legal_moves2(Board& board) {
   return movelist;
 }
 
+template <MoveGenType type>
 vector<Move> generate_legal_moves2(Board& board) {
   if (board.turn == White)
-    return generate_legal_moves2<White>(board);
+    return generate_legal_moves2<White, type>(board);
   else
-    return generate_legal_moves2<Black>(board);
+    return generate_legal_moves2<Black, type>(board);
 }
 
 template <Player turn>
 vector<Move> generate_legal_moves(Board& board) {
-  return generate_legal_moves2<turn>(board);
+  if (is_in_check<turn>(board)) {
+    return generate_legal_moves2<turn, Evasions>(board);
+  } else {
+    return generate_legal_moves2<turn, NonEvasions>(board);
+  }
 
   // cout << "gen legal @" << zobrist_hash() << endl;
   auto movelist = generate_pseudo_moves<turn>(board);
@@ -851,6 +805,56 @@ vector<Move> generate_legal_moves(Board& board) {
     return generate_legal_moves<White>(board);
   else
     return generate_legal_moves<Black>(board);
+}
+
+int perft(Board& board, int depth, bool last_move_check) {
+  if (depth <= 0) return 1;
+
+  auto legal = last_move_check ? generate_legal_moves2<Evasions>(board)
+                               : generate_legal_moves2<NonEvasions>(board);
+
+  if (depth == 1) return legal.size();
+
+  int nodes = 0;
+
+  for (auto& move : legal) {
+    board.make_move(move);
+    nodes += perft(board, depth - 1, is_in_check(board, board.turn));
+    board.unmake_move(move);
+  }
+  return nodes;
+}
+
+int divide(Board& board, int depth) {
+  int sum = 0;
+  auto t1 = chrono::high_resolution_clock::now();
+  auto legal = generate_legal_moves(board);
+  // Board before = board;
+  for (auto& move : legal) {
+    board.make_move(move);
+    // Board after = board;
+    int nodes = perft(board, depth - 1, is_in_check(board, board.turn));
+    board.unmake_move(move);
+    // if (before.to_fen() != board.to_fen()) {
+    //   cerr << "! "
+    //        << "undo failed" << endl;
+    //   cerr << "move: ";
+    //   move.print();
+    //   cerr << "before:       " << before.to_fen() << endl;
+    //   cerr << "after move:   " << after.to_fen() << endl;
+    //   cerr << "after unmove: " << board.to_fen() << endl;
+    //   break;
+    // }
+    sum += nodes;
+    cout << move.to_uci() << ": " << nodes << endl;
+  }
+  auto t2 = chrono::high_resolution_clock::now();
+  auto diff = chrono::duration_cast<chrono::nanoseconds>(t2 - t1).count();
+
+  cout << "Moves: " << legal.size() << endl;
+  cout << "Nodes: " << sum << endl;
+  cout << "Nodes/sec: " << int(diff ? sum * 1e9 / diff : -1) << endl;
+  return sum;
 }
 
 bool make_move_if_legal(Board& board, const string& move) {

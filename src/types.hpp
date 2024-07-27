@@ -41,7 +41,9 @@ enum Direction : char {
 };
 
 enum Player { White = 1, Black = -1 };
+
 enum Status { Undecided, WhiteWins, BlackWins, Draw };
+
 enum DrawType {
   None,
   InsufficientMaterial,
@@ -83,3 +85,9 @@ enum SearchType {
 enum CheckType { CheckNotChecked = 0, WhiteChecked = 1, BlackChecked = -1 };
 
 enum EvalType { Exact, LowerBound, UpperBound };
+
+enum MoveGenType {
+  Evasions,
+  NonEvasions,
+  Captures,
+};
