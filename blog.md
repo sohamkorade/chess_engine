@@ -359,3 +359,7 @@
   - employs a Teacher-Student model: a strong engine (teacher) is used to verify the moves of a weaker engine (student). Greatly reduces the time taken to pinpoint a bug. The tool directly bisects the moves where the engines differ, showing missing and extra moves generated
   - thinking of relocating this tool to a whole new repo :)
   - UPDATE: https://github.com/sohamkorade/autoperft
+
+### 8 am
+- add MoveGenType enum, to better split code for check evasions and non-evasions.
+- try to use last move to know if the current position is in check

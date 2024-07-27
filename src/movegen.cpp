@@ -429,6 +429,67 @@ Direction get_absolute_pin_attacker_dir(Board& board, int sq) {
 }
 
 template <Player turn>
+bool is_check(Board& board, Move& move) {
+  // the move has already been made
+  // we are not the player who made the move
+  auto& pos = board.board;
+  const Piece p = pos[move.to];
+  int sq = move.to;
+
+  const int K_pos = turn == White ? board.Kpos : board.kpos;
+  constexpr Piece opp_P = Piece(-turn * wP);
+  constexpr Piece opp_N = Piece(-turn * wN);
+  constexpr Piece opp_B = Piece(-turn * wB);
+  constexpr Piece opp_R = Piece(-turn * wR);
+  constexpr Piece opp_Q = Piece(-turn * wQ);
+
+  // direct check
+  if (p == opp_P) {
+    // check for pawn attacks (relative to turn)
+    const Direction opp_NW = turn == Black ? NW : SW;
+    const Direction opp_NE = turn == Black ? NE : SE;
+#define check_pawn(dir) \
+  if (is_safe<dir>(sq) && sq + dir == K_pos) return true;
+    check_pawn(opp_NW) check_pawn(opp_NE);
+#undef check_pawn
+  }
+
+  if (p == opp_N) {
+    // check for knight attacks
+#define check_knight(dir) \
+  if (is_safe<dir>(sq) && sq + dir == K_pos) return true;
+    check_knight(NNW) check_knight(NNE);
+    check_knight(WNW) check_knight(WSW);
+    check_knight(ENE) check_knight(ESE);
+    check_knight(SSW) check_knight(SSE);
+#undef check_knight
+  }
+
+#define check_slider(p1, p2, dir) \
+  if (slide_find_end<dir>(pos, sq) == K_pos) return true;
+  if (p == opp_B || p == opp_Q) {
+    // check for bishop and queen attacks
+    check_slider(opp_B, opp_Q, NW);
+    check_slider(opp_B, opp_Q, NE);
+    check_slider(opp_B, opp_Q, SW);
+    check_slider(opp_B, opp_Q, SE);
+  }
+  if (p == opp_R || p == opp_Q) {
+    // check for rook and queen attacks
+    check_slider(opp_R, opp_Q, N);
+    check_slider(opp_R, opp_Q, S);
+    check_slider(opp_R, opp_Q, E);
+    check_slider(opp_R, opp_Q, W);
+  }
+#undef check_slider
+
+  // discovered check
+  if (is_sq_attacked_by_BRQ<turn>(pos, K_pos)) return true;
+
+  return false;
+}
+
+template <Player turn>
 void generate_king_moves_safe_xray(Board& board, vector<Move>& movelist) {
   // generate king moves, except castling
   const int K_pos = turn == White ? board.Kpos : board.kpos;
@@ -819,7 +880,11 @@ int perft(Board& board, int depth, bool last_move_check) {
 
   for (auto& move : legal) {
     board.make_move(move);
-    nodes += perft(board, depth - 1, is_in_check(board, board.turn));
+    // bool check = board.turn == White ? is_in_check<White>(board)
+    //                                  : is_in_check<Black>(board);
+    bool check = board.turn == White ? is_check<White>(board, move)
+                                     : is_check<Black>(board, move);
+    nodes += perft(board, depth - 1, check);
     board.unmake_move(move);
   }
   return nodes;
@@ -833,7 +898,11 @@ int divide(Board& board, int depth) {
   for (auto& move : legal) {
     board.make_move(move);
     // Board after = board;
-    int nodes = perft(board, depth - 1, is_in_check(board, board.turn));
+    // bool check = board.turn == White ? is_in_check<White>(board)
+    //                                  : is_in_check<Black>(board);
+    bool check = board.turn == White ? is_check<White>(board, move)
+                                     : is_check<Black>(board, move);
+    int nodes = perft(board, depth - 1, check);
     board.unmake_move(move);
     // if (before.to_fen() != board.to_fen()) {
     //   cerr << "! "
