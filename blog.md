@@ -352,3 +352,10 @@
   - now, I generate only legal moves
     - so many conditions to handle: single check, double check, absolute pins, castling, en passant, x-ray attacks on king, capturing checking pieces, interposing pieces in check, etc.
   - yet to simplify the code, it's become a bit complex now
+- also wrote a perft-checking tool in python
+  - learnt to properly use `subprocess.Popen`
+  - this tool will help me to verify that the engine is still working correctly after optimizations
+  - works with any UCI engine, not just mine!
+  - employs a Teacher-Student model: a strong engine (teacher) is used to verify the moves of a weaker engine (student). Greatly reduces the time taken to pinpoint a bug. The tool directly bisects the moves where the engines differ, showing missing and extra moves generated
+  - thinking of relocating this tool to a whole new repo :)
+  - UPDATE: https://github.com/sohamkorade/autoperft
