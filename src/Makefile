@@ -1,4 +1,4 @@
-FLAGS = g++ -Wall -Ofast
+FLAGS = g++ -Wall -Ofast -std=c++23
 
 GIT_SHA = $(shell git rev-parse --short HEAD 2>/dev/null)
 TIMESTAMP = $(shell date +%Y%m%d_%H%M)

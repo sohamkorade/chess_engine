@@ -363,3 +363,9 @@
 ### 8 am
 - add MoveGenType enum, to better split code for check evasions and non-evasions.
 - try to use last move to know if the current position is in check
+
+
+## 23 Aug 2024
+
+### 12:50 am
+- just added `-std=c++20` flag to Makefile, and got ~6.6% speedup in move generation!
