@@ -28,7 +28,7 @@ int normalize_score(int score, int depth) {
   return score;
 }
 
-inline int TT_probe(TT_t TT, u_int64_t hash, int depth, int alpha, int beta) {
+inline int TT_probe(TT_t TT, uint64_t hash, int depth, int alpha, int beta) {
   TT_t entry = &TT[hash % TT_size];
   if (entry->hash != hash) return TT_miss;  // verify hash
   if (entry->age > 0 && entry->depth >= depth) {
@@ -40,7 +40,7 @@ inline int TT_probe(TT_t TT, u_int64_t hash, int depth, int alpha, int beta) {
   return TT_miss;
 }
 
-inline void TT_store(TT_t TT, u_int64_t hash, int depth, int score,
+inline void TT_store(TT_t TT, uint64_t hash, int depth, int score,
                      EvalType eval_type) {
   TT_t entry = &TT[hash % TT_size];
   if (entry->depth > depth) return;  // don't overwrite deeper scores
