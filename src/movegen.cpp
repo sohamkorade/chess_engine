@@ -473,10 +473,9 @@ void generate_king_moves_safe_xray(Board& board, vector<Move>& movelist) {
 template <Player turn>
 void generate_promotion_moves_safe(Position& pos, vector<Move>& movelist,
                                    int sq) {
-  vector<Piece> promotions = {rel_Q, rel_R, rel_B, rel_N};
-
-#define promote(dir) \
-  for (auto& piece : promotions) movelist.emplace_back(sq, sq + dir, piece);
+#define promote(dir)                               \
+  for (auto& piece : {rel_Q, rel_R, rel_B, rel_N}) \
+    movelist.emplace_back(sq, sq + dir, piece);
 
   if (pos[sq + rel_North] == Empty) promote(rel_North);
   if (isnt_A(sq) && hostile(pos[sq], pos[sq + rel_NW])) promote(rel_NW);
