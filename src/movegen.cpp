@@ -729,7 +729,21 @@ vector<Move> generate_legal_moves2(Board& board) {
               only_capture<rel_NE>(pos, movelist, sq);
             }
           } else {  // promotion moves
-            generate_promotion_moves_safe<turn>(pos, movelist, sq);
+#define promote(dir)                               \
+  for (auto& piece : {rel_Q, rel_R, rel_B, rel_N}) \
+    movelist.emplace_back(sq, sq + dir, piece);
+
+            if (attacker_dir == N || attacker_dir == S) {
+              if (pos[sq + rel_North] == Empty) promote(rel_North);
+            } else if (attacker_dir == rel_NW) {
+              if (isnt_A(sq) && hostile(pos[sq], pos[sq + rel_NW]))
+                promote(rel_NW);
+            } else if (attacker_dir == rel_NE) {
+              if (isnt_H(sq) && hostile(pos[sq], pos[sq + rel_NE]))
+                promote(rel_NE);
+            }
+
+#undef promote
           }
         }
 // slide_capture_threat<attacker_dir, rel_B, rel_Q, rel_K>(pos, movelist, sq);
