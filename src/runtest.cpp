@@ -60,7 +60,7 @@ int perft(int argc, char* argv[]) {
       }
     }
   }
-  cout << "Total time taken: " << total << endl;
+  cout << "Total time taken: " << total << "s" << endl;
   return 0;
 }
 
@@ -121,8 +121,8 @@ int movegen_speedtest(int argc, char* argv[]) {
     }
   }
   const float avg = total / times;
-  cout << "Total time taken: " << total << endl;
-  cout << "Average time taken: " << avg << endl;
+  cout << "Total time taken: " << total << "s" << endl;
+  cout << "Average time taken: " << avg << "s" << endl;
   return 0;
 }
 

@@ -369,3 +369,17 @@
 
 ### 12:50 am
 - just added `-std=c++20` flag to Makefile, and got ~6.6% speedup in move generation!
+- UPDATE: using `-std=c++23` now
+
+
+## 22 May 2025
+
+### 2:30 am
+- seeing code after a long time, minor changes:
+  - refactor: update test target in Makefile to exclude unnecessary steps
+    - no need to compile gui to run tests!
+  - refactor: create macros for relative and opposite pieces
+    - declared macros for `opp_` and `rel_` (both for pieces and directions) instead of using const/constexpr values in each function
+  - refactor: simplify promotion move generation in generate_legal_moves2
+  - report units with time in seconds in runtest
+- tried out compile-time precomputed table for `is_safe` function, was slightly slower :(
