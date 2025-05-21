@@ -7,7 +7,7 @@ TIMESTAMP = $(shell date +%Y%m%d_%H%M)
 
 all: main runtest gui archive
 
-test: all
+test: main runtest
 	./runtest perft 400000
 
 archive:
