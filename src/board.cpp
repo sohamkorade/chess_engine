@@ -143,8 +143,7 @@ void Board::make_move(Move& move) {
     else if (move.equals(60, 58))
       board[56] = Empty, board[59] = wR;
   } else if (move.enpassant) {  // remove pawn when enpassant
-    int rel_S = turn * S;
-    board[move.to + rel_S] = Empty;
+    board[move.to + rel_South] = Empty;
   }
   change_turn();
 
@@ -175,7 +174,7 @@ void Board::unmake_move(Move& move) {
 
   // update board
   Piece captured = board[move.from];
-  board[move.from] = move.promotion == Empty ? board[move.to] : Piece(-turn);
+  board[move.from] = move.promotion == Empty ? board[move.to] : opp_P;
   board[move.to] = move.captured;
   move.captured = captured;
 
@@ -189,8 +188,7 @@ void Board::unmake_move(Move& move) {
     else if (move.equals(60, 58))
       board[56] = wR, board[59] = Empty;
   } else if (move.enpassant) {  // add pawn when enpassant
-    int rel_N = turn * N;
-    board[move.to + rel_N] = Piece(turn * wP);
+    board[move.to + rel_North] = rel_P;
   }
   change_turn();
 
