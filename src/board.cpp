@@ -301,14 +301,14 @@ void Board::load_startpos() {
 }
 
 uint64_t Board::zobrist_hash() {
-  uint64_t hash = 0;
+  uint64_t _hash = 0;
   for (int i = 0; i < 64; i++)
-    if (board[i] != Empty) hash ^= Zobrist::pst[i][board[i] + 6];
-  if (turn == Black) hash ^= Zobrist::turn;
+    if (board[i] != Empty) _hash ^= Zobrist::pst[i][board[i] + 6];
+  if (turn == Black) _hash ^= Zobrist::turn;
   for (int i = 0; i < 4; i++)
-    if (castling_rights[i]) hash ^= Zobrist::castling[i];
-  if (~enpassant_sq_idx) hash ^= Zobrist::enpassant[enpassant_sq_idx % 8];
-  return hash;
+    if (castling_rights[i]) _hash ^= Zobrist::castling[i];
+  if (~enpassant_sq_idx) _hash ^= Zobrist::enpassant[enpassant_sq_idx % 8];
+  return _hash;
 }
 
 void zobrist_init() {
