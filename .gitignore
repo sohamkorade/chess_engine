@@ -1,0 +1,6 @@
+# Build artifacts
+src/main
+src/runtest
+src/gui
+src/*.o
+cmake-build-*/

@@ -54,11 +54,46 @@ I wanted to learn more about chess engines and how they work. I also wanted to l
 I read a lot of articles and watched a few videos on chess programming. I used [Chess Programming Wiki](https://www.chessprogramming.org/Main_Page) as a reference time and again. I also spent a lot of time reading the source code of [Stockfish](https://github.com/official-stockfish/Stockfish).
 
 # how to run
+
+## using Makefile
 Linux:
 ```bash
+cd src
 make
 ./main # for UCI engine
 ./gui  # for GUI chess application
+```
+
+## using CMake
+
+### prerequisites
+- CMake 3.20 or higher
+- C++23 compatible compiler (GCC, Clang, etc.)
+- GTK4 and pkg-config (optional - GUI will only build if GTK4 is found)
+
+### building with CMake
+```bash
+# Configure the build
+cmake -B cmake-build-debug -S . -DCMAKE_BUILD_TYPE=Debug
+
+# Build all executables
+cmake --build cmake-build-debug
+
+# Or build specific targets
+cmake --build cmake-build-debug --target main    # UCI engine
+cmake --build cmake-build-debug --target runtest # Test executable
+cmake --build cmake-build-debug --target gui     # GUI (requires GTK4)
+```
+
+### installing GTK4 (for GUI)
+**macOS:**
+```bash
+brew install gtk4 pkg-config
+```
+
+**Linux:**
+```bash
+sudo apt-get install libgtk-4-dev pkg-config
 ```
 
 # license
