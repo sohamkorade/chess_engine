@@ -383,3 +383,11 @@
   - refactor: simplify promotion move generation in generate_legal_moves2
   - report units with time in seconds in runtest
 - tried out compile-time precomputed table for `is_safe` function, was slightly slower :(
+
+
+## 1 Feb 2026
+
+### 10:30 pm
+- tried out CLion IDE, it's pretty good for refactoring and debugging
+- made CMakeLists.txt file for more reproducible builds
+- learnt that `-Ofast` is (soft-)deprecated, and replaced it with `-O3 -ffast-math`
