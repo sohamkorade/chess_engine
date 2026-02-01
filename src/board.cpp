@@ -19,7 +19,7 @@ string idx2sq(int idx) {
 
 Piece char2piece(char p) {
   size_t pos = string("kqrbnp.PNBRQK").find(p);
-  if (pos != string::npos) return Piece(pos - 6);
+  if (pos != string::npos) return static_cast<Piece>(pos - 6);
   return Empty;
 }
 
@@ -264,7 +264,7 @@ string Board::to_fen() {
   for (int i = 0; i < 64; i++) {
     if (board[i] == Empty) blanks++;
     if (blanks > 0 && (board[i] != Empty || !isnt_H(i))) {
-      fen += char('0' + blanks);
+      fen += static_cast<char>('0' + blanks);
       blanks = 0;
     }
     if (board[i] != Empty) fen += piece2char(board[i]);

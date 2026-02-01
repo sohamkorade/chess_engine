@@ -866,7 +866,7 @@ int divide(Board& board, int depth) {
 
   cout << "Moves: " << legal.size() << endl;
   cout << "Nodes: " << sum << endl;
-  cout << "Nodes/sec: " << int(diff ? sum * 1e9 / diff : -1) << endl;
+  cout << "Nodes/sec: " << static_cast<int>(diff ? sum * 1e9 / diff : -1) << endl;
   return sum;
 }
 

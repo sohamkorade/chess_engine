@@ -128,7 +128,7 @@ void update_gui() {
 void print_material_count() {
   for (int i = 0; i < 13; i++) {
     if (i == 6) continue;
-    cout << piece2char(Piece(i - 6)) << ":" << g.material_count[i] << " ";
+    cout << piece2char(static_cast<Piece>(i - 6)) << ":" << g.material_count[i] << " ";
   }
   cout << endl;
 }

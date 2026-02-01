@@ -41,7 +41,7 @@ class Board {
 
   Board() { load_startpos(); }
   constexpr Piece operator[](int i) { return board[i]; }
-  inline void change_turn() { turn = Player(-turn); }
+  inline void change_turn() { turn = static_cast<Player>(-turn); }
   inline bool empty(int idx) { return board[idx] == Empty; }
 
   inline int piece_color(int sq_idx);
